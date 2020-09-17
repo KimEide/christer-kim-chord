@@ -6,12 +6,20 @@ import signal
 import socket
 import socketserver
 import threading
+import http.client
 
 from http.server import BaseHTTPRequestHandler,HTTPServer
 
 
 object_store = {}
 neighbors = []
+request_buffer = []
+
+def find_index(buffer, key):
+    for i in range(len(buffer)):
+        if buffer[i] == key:
+            return i
+    
 
 class NodeHttpHandler(BaseHTTPRequestHandler):
 
@@ -41,6 +49,33 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
     def extract_key_from_path(self, path):
         return re.sub(r'/storage/?(\w+)', r'\1', path)
 
+    def extract_key_from_forwarding(self, path):
+        temp = path.split("/")
+        return temp[1], temp[2]
+  
+
+    def get_value(self, node, key, original):
+        conn = http.client.HTTPConnection(node)
+        conn.request("GET", "/forwarding/"+key+"/"+original)
+        print("waiting for response, id:", server.id)
+        # if key != object_store:
+        #     self.send_whole_response(404, "hfg")
+        resp = conn.getresponse()
+        headers = resp.getheaders()
+        print("got response, id: ", server.id)
+        if resp.status != 200:
+            value = None
+        else:
+            value = resp.read()
+        contenttype = "text/plain"
+        for h, hv in headers:
+            if h=="Content-type":
+                contenttype = hv
+        if contenttype == "text/plain":
+            value = value.decode("utf-8")
+        conn.close()
+        return value
+
     def do_PUT(self):
         content_length = int(self.headers.get('content-length', 0))
 
@@ -58,12 +93,48 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 
             if key in object_store:
                 self.send_whole_response(200, object_store[key])
+            
             else:
-                self.send_whole_response(404,
-                        "No object with key '%s' on this node" % key)
+                # self.send_whole_response(404, "No object with key '%s' on this node" % key)
+                value = self.get_value(server.finger_table[0], key, server.id)
+                
+                if value != None:
+                    self.send_whole_response(200, value)
+                else:
+                    request_buffer.append(key)
+
+                
+                # if key in request_buffer:
+                #     print("key in buffer, finding key: {} on node: {}".format(key, server.id))
+                #     request_buffer.pop(find_index(request_buffer, key))
+                #     self.send_whole_response(404, "No object with key '%s' on this node" % key) 
+                # else:
+                #     print("appending key: {}, node id: {}".format(key, server.id))
+                #     request_buffer.append(key)
+                
+        elif self.path.startswith("/forwarding")
+        """
+        -   visst vi får inn en /storage så e den fra client og vi sende en forwarding om den noden ikkje har den 
+            /forwarding/<key>/<orginal motaker av request>, og setter key: client inni dictionary
+        -   dersom noden får en forward request, så sender den 404 tilbake om den ikkje finner den hos seg selv
+        -   videresender forwardingen helt til noen finner den eller den orginale noden får forwardingen, har keyen i request buffer og sender en response til client som ble tatt vare på
+            dersom den blir videresendt og noen finner den så sender vi den til den orginale motakeren for /storage i en POST, lager en do_POST som sender tilbake til clienten
+        """
+            key, sender = self.extract_key_from_forwarding(self.path)
+            
+            if key in object_store:
+                self.send_whole_response(200, object_store[key])
+            else:
+                self.send_whole_response(404, "No object with key '%s' on this node" % key) 
+                value = self.get_value(server.finger_table[0], key)
+                # print("id: {}, next: {}".format(server.id, server.finger_table[0]))
+                # value = self.get_value(server.finger_table[0], key)
+                
+                # print("found value: ", value)
+                
 
         elif self.path.startswith("/neighbors"):
-            self.send_whole_response(200, neighbors)
+            self.send_whole_response(200, server.finger_table)
 
         else:
             self.send_whole_response(404, "Unknown path: " + self.path)
@@ -88,13 +159,26 @@ def arg_parser():
     return parser
 
 class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
-    pass
+    def __init__(self, *args, **kwargs):    
+        super(ThreadingHttpServer, self).__init__(*args, **kwargs)
+        self.finger_table = []
+        self.id = 0
+
+    def innit_(self, args):
+        self.finger_table = args.neighbors
+        self.id = args.port
+
 
 def run_server(args):
     global server
     global neighbors
-    server = ThreadingHttpServer(('', args.port), NodeHttpHandler)
+    global request_buffer
+
+    node_id = args.port
     neighbors = args.neighbors
+
+    server = ThreadingHttpServer(('', args.port), NodeHttpHandler)
+    server.innit_(args)
 
     def server_main():
         print("Starting server on port {}. Neighbors: {}".format(args.port, args.neighbors))

@@ -50,6 +50,7 @@ def get_neighbours(node):
     conn = http.client.HTTPConnection(node)
     conn.request("GET", "/neighbors")
     resp = conn.getresponse()
+    print(resp)
     if resp.status != 200:
         neighbors = []
     else:
@@ -80,8 +81,11 @@ def simple_check(nodes):
     node_index = 0
     for key, value in pairs.items():
         try:
+            print("her", key, value)
             put_value(nodes[node_index], key, value)
             returned = get_value(nodes[node_index], key)
+
+            print(returned)
 
             if returned == value:
                 successes+=1
@@ -104,11 +108,18 @@ def retrieve_from_different_nodes(nodes):
     successes = 0
     for key, value in pairs.items():
         try:
-            put_value(random.choice(nodes), key, value)
-            returned = get_value(random.choice(nodes), key)
+            addr1 = random.choice(nodes)
+            addr2 = random.choice(nodes)
+            put_value(addr1, key, value)
+            returned = get_value(addr2, key)
+            
+
 
             if returned == value:
+                print("TRUE", addr1, addr2)
                 successes+=1
+            else:
+                print("FALSE", addr1, addr2)
         except:
             pass
 
@@ -140,19 +151,24 @@ def main(args):
     nodes = set(args.nodes)
     nodes |= walk_neighbours(args.nodes)
     nodes = list(nodes)
+    
     print("%d nodes registered: %s" % (len(nodes), ", ".join(nodes)))
 
     if len(nodes)==0:
         raise RuntimeError("No nodes registered to connect to")
 
-    print()
-    simple_check(nodes)
+    # print()
+    # simple_check(nodes)
 
-    print()
-    retrieve_from_different_nodes(nodes)
+    # print()
+    # retrieve_from_different_nodes(nodes)
 
     print()
     get_nonexistent_key(nodes)
+
+    # print()
+    # for element in nodes:    
+    #     print(get_neighbours(element))
 
 if __name__ == "__main__":
 
