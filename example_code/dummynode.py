@@ -7,6 +7,8 @@ import socket
 import socketserver
 import threading
 import http.client
+import uuid
+import numpy as np
 
 from http.server import BaseHTTPRequestHandler,HTTPServer
 
@@ -16,207 +18,253 @@ neighbors = []
 request_buffer = []
 
 def find_index(buffer, key):
-    for i in range(len(buffer)):
-        if buffer[i] == key:
-            return i
-    
-
+	for i in range(len(buffer)):
+		if buffer[i] == key:
+			return i
+	
 class NodeHttpHandler(BaseHTTPRequestHandler):
 
-    def send_whole_response(self, code, content, content_type="text/plain"):
+	def send_whole_response(self, code, content, content_type="text/plain"):
 
-        if isinstance(content, str):
-            content = content.encode("utf-8")
-            if not content_type:
-                content_type = "text/plain"
-            if content_type.startswith("text/"):
-                content_type += "; charset=utf-8"
-        elif isinstance(content, bytes):
-            if not content_type:
-                content_type = "application/octet-stream"
-        elif isinstance(content, object):
-            content = json.dumps(content, indent=2)
-            content += "\n"
-            content = content.encode("utf-8")
-            content_type = "application/json"
+		if isinstance(content, str):
+			content = content.encode("utf-8")
+			if not content_type:
+				content_type = "text/plain"
+			if content_type.startswith("text/"):
+				content_type += "; charset=utf-8"
+		elif isinstance(content, bytes):
+			if not content_type:
+				content_type = "application/octet-stream"
+		elif isinstance(content, object):
+			content = json.dumps(content, indent=2)
+			content += "\n"
+			content = content.encode("utf-8")
+			content_type = "application/json"
 
-        self.send_response(code)
-        self.send_header('Content-type', content_type)
-        self.send_header('Content-length',len(content))
-        self.end_headers()
-        self.wfile.write(content)
+		self.send_response(code)
+		self.send_header('Content-type', content_type)
+		self.send_header('Content-length',len(content))
+		self.end_headers()
+		self.wfile.write(content)
 
-    def extract_key_from_path(self, path):
-        return re.sub(r'/storage/?(\w+)', r'\1', path)
+	def find_successor(self, address, path, method):
+		"""
+		this function forwards a request, if the desired address resides within the fingertable
+		it forwards it directly to that node. if it doesnt exist within the fingertable then it asks its neighbour
+		"""
+		#if the address resides within the fingertable, then contact the node directly
+		if address in server.finger_table and True in server.finger_table[address]:
+			full_address = server.finger_table[address]
+			value = self.get_value(full_address, path, method)
+			return value
+		else:#if its not in the fingertable, then we have to ask our neighbor
+			
+			value = self.get_value(neighbors[0], path, method)	
 
-    def extract_key_from_forwarding(self, path):
-        temp = path.split("/")
-        return temp[1], temp[2]
-  
+			return value
 
-    def get_value(self, node, key, original):
-        conn = http.client.HTTPConnection(node)
-        conn.request("GET", "/forwarding/"+key+"/"+original)
-        print("waiting for response, id:", server.id)
-        # if key != object_store:
-        #     self.send_whole_response(404, "hfg")
-        resp = conn.getresponse()
-        headers = resp.getheaders()
-        print("got response, id: ", server.id)
-        if resp.status != 200:
-            value = None
-        else:
-            value = resp.read()
-        contenttype = "text/plain"
-        for h, hv in headers:
-            if h=="Content-type":
-                contenttype = hv
-        if contenttype == "text/plain":
-            value = value.decode("utf-8")
-        conn.close()
-        return value
+	def extract_key_from_path(self, path):
+		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
-    def do_PUT(self):
-        content_length = int(self.headers.get('content-length', 0))
+	def get_value(self, node, path, method):
+		"""
+		copied from client.py, but takes both path and method as input
+		forwards any request to the specified node
+		"""
+		conn = http.client.HTTPConnection(node)
+		conn.request(method, path)
+		resp = conn.getresponse()
+		headers = resp.getheaders()
+		if resp.status != 200:
+			value = None
+		else:
+			value = resp.read()
+		contenttype = "text/plain"
+		for h, hv in headers:
+			if h=="Content-type":
+				contenttype = hv
+		if contenttype == "text/plain":
+			value = value.decode("utf-8")
+		conn.close()
+		return value
 
-        key = self.extract_key_from_path(self.path)
-        value = self.rfile.read(content_length)
+	def do_PUT(self):
+		"""
+		if the key should be stored at the servers address, it puts the value into  the object store and maps it to the key,
+		returns 200 when stored
+		if the key should be stored somewhere else, forward the PUT request and return recursively
+		"""
+		content_length = int(self.headers.get('content-length', 0))
 
-        object_store[key] = value
+		key = self.extract_key_from_path(self.path)
 
-        # Send OK response
-        self.send_whole_response(200, "Value stored for " + key)
+		#figure out where the key should be stored
+		address = int(uuid.UUID(key)) % server.M
+		
+		#if the address is equall to the server id, that means that we should store the value on this server
+		#if not we should forward the request to find the correct node to store it on
+		if address == server.id:
+			value = self.rfile.read(content_length)
+			object_store[key] = value
+			
+			# Send OK response
+			self.send_whole_response(200, "Value stored for " + key)
+		else:
+			value = self.find_successor(address, self.path, "PUT")
 
-    def do_GET(self):
-        if self.path.startswith("/storage"):
-            key = self.extract_key_from_path(self.path)
+			if value != 200:
+				print("feila for put..")
 
-            if key in object_store:
-                self.send_whole_response(200, object_store[key])
-            
-            else:
-                # self.send_whole_response(404, "No object with key '%s' on this node" % key)
-                value = self.get_value(server.finger_table[0], key, server.id)
-                
-                if value != None:
-                    self.send_whole_response(200, value)
-                else:
-                    request_buffer.append(key)
+	def do_GET(self):
+		"""
+		if the key should be at the servers address, it looks up the key in object store,
+		if not present returns 404, if present returns 200 and value stored on key
+		if the key should be stored somewhere else, forward the get request and return recursively
+		"""
+		if self.path.startswith("/storage"):
+			key = self.extract_key_from_path(self.path)
+			
+			#figure out where the key should be stored
+			address = int(uuid.UUID(key)) % server.M
 
-                
-                # if key in request_buffer:
-                #     print("key in buffer, finding key: {} on node: {}".format(key, server.id))
-                #     request_buffer.pop(find_index(request_buffer, key))
-                #     self.send_whole_response(404, "No object with key '%s' on this node" % key) 
-                # else:
-                #     print("appending key: {}, node id: {}".format(key, server.id))
-                #     request_buffer.append(key)
-                
-        elif self.path.startswith("/forwarding")
-        """
-        -   visst vi får inn en /storage så e den fra client og vi sende en forwarding om den noden ikkje har den 
-            /forwarding/<key>/<orginal motaker av request>, og setter key: client inni dictionary
-        -   dersom noden får en forward request, så sender den 404 tilbake om den ikkje finner den hos seg selv
-        -   videresender forwardingen helt til noen finner den eller den orginale noden får forwardingen, har keyen i request buffer og sender en response til client som ble tatt vare på
-            dersom den blir videresendt og noen finner den så sender vi den til den orginale motakeren for /storage i en POST, lager en do_POST som sender tilbake til clienten
-        """
-            key, sender = self.extract_key_from_forwarding(self.path)
-            
-            if key in object_store:
-                self.send_whole_response(200, object_store[key])
-            else:
-                self.send_whole_response(404, "No object with key '%s' on this node" % key) 
-                value = self.get_value(server.finger_table[0], key)
-                # print("id: {}, next: {}".format(server.id, server.finger_table[0]))
-                # value = self.get_value(server.finger_table[0], key)
-                
-                # print("found value: ", value)
-                
+			#if the key is supposed to be stored at the id which is this server we check if the object exists in the store
+			#return 200 and value if it exist, 404 if it does not
+			if address == server.id: 
+				if key in object_store:
+					self.send_whole_response(200, object_store[key])
+				else:
+					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 
-        elif self.path.startswith("/neighbors"):
-            self.send_whole_response(200, server.finger_table)
+			#if the key is supposed to be stored somewhere else, we forward the message by using find_successor
+			else:
+				#the value will be recursively returned
+				value = self.find_successor(address, self.path, "GET")
+				
+				#if the value existed somewhere we return 200 and value, else the value does not exist and we return 404
+				if value != None:
+					self.send_whole_response(200, value)
+				else:
+					self.send_whole_response(404, "No object with key '%s' on this node" % key)
+				
 
-        else:
-            self.send_whole_response(404, "Unknown path: " + self.path)
+		elif self.path.startswith("/neighbors"):
+			self.send_whole_response(200, neighbors)
+		else:
+			self.send_whole_response(404, "Unknown path: " + self.path)
 
 def arg_parser():
-    PORT_DEFAULT = 8000
-    DIE_AFTER_SECONDS_DEFAULT = 20 * 60
-    parser = argparse.ArgumentParser(prog="node", description="DHT Node")
+	PORT_DEFAULT = 8000
+	DIE_AFTER_SECONDS_DEFAULT = 20 * 60
+	parser = argparse.ArgumentParser(prog="node", description="DHT Node")
 
-    parser.add_argument("-p", "--port", type=int, default=PORT_DEFAULT,
-            help="port number to listen on, default %d" % PORT_DEFAULT)
+	parser.add_argument("-p", "--port", type=int, default=PORT_DEFAULT,
+			help="port number to listen on, default %d" % PORT_DEFAULT)
 
-    parser.add_argument("--die-after-seconds", type=float,
-            default=DIE_AFTER_SECONDS_DEFAULT,
-            help="kill server after so many seconds have elapsed, " +
-                "in case we forget or fail to kill it, " +
-                "default %d (%d minutes)" % (DIE_AFTER_SECONDS_DEFAULT, DIE_AFTER_SECONDS_DEFAULT/60))
+	parser.add_argument("--die-after-seconds", type=float,
+			default=DIE_AFTER_SECONDS_DEFAULT,
+			help="kill server after so many seconds have elapsed, " +
+				"in case we forget or fail to kill it, " +
+				"default %d (%d minutes)" % (DIE_AFTER_SECONDS_DEFAULT, DIE_AFTER_SECONDS_DEFAULT/60))
 
-    parser.add_argument("neighbors", type=str, nargs="*",
-            help="addresses (host:port) of neighbour nodes")
+	parser.add_argument("neighbors", type=str, nargs="*",
+			help="addresses (host:port) of neighbour nodes")
 
-    return parser
+	return parser
 
 class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
-    def __init__(self, *args, **kwargs):    
-        super(ThreadingHttpServer, self).__init__(*args, **kwargs)
-        self.finger_table = []
-        self.id = 0
+	def __init__(self, *args, **kwargs):    
+		super(ThreadingHttpServer, self).__init__(*args, **kwargs)
+		self.finger_table = {}
+		self.M = 16 #must be an exponent of two, 2, 4, 8, 16, 32, 64 
 
-    def innit_(self, args):
-        self.finger_table = args.neighbors
-        self.id = args.port
+	def innit_(self, args):
+		"""
+		initializes the different "static" values that must be true based on the information of the neighbours
+		the fingertable is a dictionary where node identity 0-16 maps the address of each identitie successor
+		key: address: False/True:
+		example:
+		{2: ('localhost:8002', True)}, if you call: finger_table[2] then it would return ('localhost', True)
+		"""
+		self.finger_table = args.neighbors
+		self.id = int(args.port) % self.M
+		self.port = args.port
 
+		#initializing the static variables of the finger table, each finger that is between the server and its neigbhor will map to the neighbor
+		#we do this so we get fingers that map to the correct successor of the node, the rest of the fingers will be fixed later, but for now we init them as false, false
+		gap = self.neigbhor_interval() #number of nodes between the server and its neihbor
+		interval = self.id + gap	# the highest number the nodes can map to its neighbor
+		
+		for i in range(np.log2(self.M)):
+			identity = (self.id + 2**i)
+			if identity <= interval:
+				self.finger_table[(identity % self.M)] = neighbors[0], True
+			else:
+				self.finger_table[(identity % self.M)] = False, False
+
+	def neigbhor_interval(self):
+		"""
+		helperfunction to initialize the fingertable correctly based on the neighbors
+		calculates the number of nodes that should be mapped to the neighbor and not the 
+		fingers itself. server.id is 12 and the neighbor of 12 is 2, then there should be
+		6 nodes that maps to node 2, because each of those "x" nodes, would have node 2 as their successor node. 
+		"""
+		neighbor_port = (neighbors[0].split(':'))
+		neigbor_id = (int(neighbor_port[1]) % self.M)
+
+		if neigbor_id < self.id:
+			interval = self.id - (self.M + neigbor_id)
+		else:
+			interval = neigbor_id - self.id
+
+		return interval
 
 def run_server(args):
-    global server
-    global neighbors
-    global request_buffer
+	global server
+	global neighbors
+	global request_buffer
 
-    node_id = args.port
-    neighbors = args.neighbors
+	neighbors = args.neighbors
 
-    server = ThreadingHttpServer(('', args.port), NodeHttpHandler)
-    server.innit_(args)
+	server = ThreadingHttpServer(('', args.port), NodeHttpHandler)
+	server.innit_(args)
 
-    def server_main():
-        print("Starting server on port {}. Neighbors: {}".format(args.port, args.neighbors))
-        server.serve_forever()
-        print("Server has shut down")
+	def server_main():
+		print("Starting server on port {}. Neighbors: {}".format(args.port, args.neighbors))
+		server.serve_forever()
+		print("Server has shut down")
 
-    def shutdown_server_on_signal(signum, frame):
-        print("We get signal (%s). Asking server to shut down" % signum)
-        server.shutdown()
+	def shutdown_server_on_signal(signum, frame):
+		print("We get signal (%s). Asking server to shut down" % signum)
+		server.shutdown()
 
-    # Start server in a new thread, because server HTTPServer.serve_forever()
-    # and HTTPServer.shutdown() must be called from separate threads
-    thread = threading.Thread(target=server_main)
-    thread.daemon = True
-    thread.start()
+	# Start server in a new thread, because server HTTPServer.serve_forever()
+	# and HTTPServer.shutdown() must be called from separate threads
+	thread = threading.Thread(target=server_main)
+	thread.daemon = True
+	thread.start()
 
-    # Shut down on kill (SIGTERM) and Ctrl-C (SIGINT)
-    signal.signal(signal.SIGTERM, shutdown_server_on_signal)
-    signal.signal(signal.SIGINT, shutdown_server_on_signal)
+	# Shut down on kill (SIGTERM) and Ctrl-C (SIGINT)
+	signal.signal(signal.SIGTERM, shutdown_server_on_signal)
+	signal.signal(signal.SIGINT, shutdown_server_on_signal)
 
-    # Wait on server thread, until timeout has elapsed
-    #
-    # Note: The timeout parameter here is also important for catching OS
-    # signals, so do not remove it.
-    #
-    # Having a timeout to check for keeps the waiting thread active enough to
-    # check for signals too. Without it, the waiting thread will block so
-    # completely that it won't respond to Ctrl-C or SIGTERM. You'll only be
-    # able to kill it with kill -9.
-    thread.join(args.die_after_seconds)
-    if thread.is_alive():
-        print("Reached %.3f second timeout. Asking server to shut down" % args.die_after_seconds)
-        server.shutdown()
+	# Wait on server thread, until timeout has elapsed
+	#
+	# Note: The timeout parameter here is also important for catching OS
+	# signals, so do not remove it.
+	#
+	# Having a timeout to check for keeps the waiting thread active enough to
+	# check for signals too. Without it, the waiting thread will block so
+	# completely that it won't respond to Ctrl-C or SIGTERM. You'll only be
+	# able to kill it with kill -9.
+	thread.join(args.die_after_seconds)
+	if thread.is_alive():
+		print("Reached %.3f second timeout. Asking server to shut down" % args.die_after_seconds)
+		server.shutdown()
 
-    print("Exited cleanly")
+	print("Exited cleanly")
 
 if __name__ == "__main__":
 
-    parser = arg_parser()
-    args = parser.parse_args()
-    run_server(args)
+	parser = arg_parser()
+	args = parser.parse_args()
+	run_server(args)
