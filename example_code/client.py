@@ -74,18 +74,19 @@ def walk_neighbours(start_nodes):
 def simple_check(nodes):
     print("Simple put/get check, retreiving from same node ...")
 
-    tries = 10
+    tries = 1
     pairs = generate_pairs(tries)
 
     successes = 0
     node_index = 0
     for key, value in pairs.items():
         try:
-            print("her", key, value)
+            print(nodes[node_index], (int(uuid.UUID(key))%16))
+
             put_value(nodes[node_index], key, value)
             returned = get_value(nodes[node_index], key)
-
-            print(returned)
+            print("sent", value)
+            print("returned", returned)
 
             if returned == value:
                 successes+=1
@@ -154,24 +155,24 @@ def main(args):
     
     print("%d nodes registered: %s" % (len(nodes), ", ".join(nodes)))
 
+
     if len(nodes)==0:
         raise RuntimeError("No nodes registered to connect to")
 
-    # print()
-    # simple_check(nodes)
+    print()
+    simple_check(nodes)
 
     # print()
     # retrieve_from_different_nodes(nodes)
 
-    print()
-    get_nonexistent_key(nodes)
+    # print()
+    # get_nonexistent_key(nodes)
 
     # print()
     # for element in nodes:    
     #     print(get_neighbours(element))
 
 if __name__ == "__main__":
-
     parser = arg_parser()
     args = parser.parse_args()
     main(args)

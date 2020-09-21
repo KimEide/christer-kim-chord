@@ -47,7 +47,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		self.end_headers()
 		self.wfile.write(content)
 
-	def find_successor(self, address, path, method):
+	def find_successor(self, address, path, method, value):
 		"""
 		this function forwards a request, if the desired address resides within the fingertable
 		it forwards it directly to that node. if it doesnt exist within the fingertable then it asks its neighbour
@@ -55,24 +55,26 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		#if the address resides within the fingertable, then contact the node directly
 		if address in server.finger_table and True in server.finger_table[address]:
 			full_address = server.finger_table[address]
-			value = self.get_value(full_address, path, method)
-			return value
+			response, status = self.get_value(full_address, path, method, value)
+		
 		else:#if its not in the fingertable, then we have to ask our neighbor
-			
-			value = self.get_value(neighbors[0], path, method)	
+			response, status = self.get_value(neighbors[0], path, method, value)	
 
-			return value
+		return response.decode('utf-8'), status
 
 	def extract_key_from_path(self, path):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
-	def get_value(self, node, path, method):
+	def get_value(self, node, path, method, content):
 		"""
 		copied from client.py, but takes both path and method as input
 		forwards any request to the specified node
 		"""
 		conn = http.client.HTTPConnection(node)
-		conn.request(method, path)
+		if method == 'GET':
+			conn.request(method, path)
+		else: 
+			conn.request(method, path, content)
 		resp = conn.getresponse()
 		headers = resp.getheaders()
 		if resp.status != 200:
@@ -86,7 +88,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		if contenttype == "text/plain":
 			value = value.decode("utf-8")
 		conn.close()
-		return value
+		return value, resp.status
 
 	def do_PUT(self):
 		"""
@@ -97,23 +99,40 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		content_length = int(self.headers.get('content-length', 0))
 
 		key = self.extract_key_from_path(self.path)
+		value = self.rfile.read(content_length)
 
 		#figure out where the key should be stored
 		address = int(uuid.UUID(key)) % server.M
+		# print("PUT, address: {}, server.id: {}".format(address, server.id))
 		
 		#if the address is equall to the server id, that means that we should store the value on this server
 		#if not we should forward the request to find the correct node to store it on
-		if address == server.id:
-			value = self.rfile.read(content_length)
-			object_store[key] = value
+		if address <= server.id and address > server.predecessor:
+			object_store[key] = value.decode('utf-8')
+
+			print("------------------------------------",type(object_store[key]))
 			
 			# Send OK response
 			self.send_whole_response(200, "Value stored for " + key)
-		else:
-			value = self.find_successor(address, self.path, "PUT")
+			print("Stored key on server.id: {}, address: {} sent response, value: {}".format(server.id , address, value))
 
-			if value != 200:
-				print("feila for put..")
+
+		elif server.id < server.predecessor and self.is_bewteen(server.id, server.predecessor, address):
+			# print("server.id: {} lower than predecessor: {}".format(server.id, server.predecessor))
+			# print("address: {}, is between precedessor {} and server.id {}".format(address, server.predecessor, server.id))
+			object_store[key] = value.decode('utf-8')
+			print("------------------------------------",type(object_store[key]))
+			
+			# Send OK response
+			self.send_whole_response(200, "Value stored for " + key)
+			print("Stored key on server.id: {}, address: {}, sent response, value: {}".format(server.id , address, value))
+
+		else:
+			# print("server.id: {}, finding succsessor of address: {}".format(server.id, address))
+			response, status = self.find_successor(address, self.path, "PUT", value)
+			self.send_whole_response(200, "Value stored for " + key)
+			# print("sent response 200 from server.id: {} value: {}".format(server.id ,key))
+	
 
 	def do_GET(self):
 		"""
@@ -126,31 +145,61 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 			
 			#figure out where the key should be stored
 			address = int(uuid.UUID(key)) % server.M
-
+			
+			print("server.id: {} GET, address: {}".format(server.id, address))
+			
 			#if the key is supposed to be stored at the id which is this server we check if the object exists in the store
 			#return 200 and value if it exist, 404 if it does not
-			if address == server.id: 
+			if address <= server.id and address > server.predecessor or address == server.id:
+				print("address:{} <= server.id: {} and address: {} > predecessor: {} ".format(address, server.id, address, server.predecessor)) 
 				if key in object_store:
-					self.send_whole_response(200, object_store[key])
+					print("SUCCESS: VALUE IS: ",object_store[key])
+					self.send_whole_response(200, str(object_store[key]))
 				else:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 
 			#if the key is supposed to be stored somewhere else, we forward the message by using find_successor
+			elif server.id < server.predecessor and self.is_bewteen(server.id, server.predecessor, address):
+				print("server.id: {} lower than predecessor: {}".format(server.id, server.predecessor))
+				print("address: {}, is between precedessor {} and server.id {}".format(address, server.predecessor, server.id))
+				if key in object_store:
+					print("server.id: {}, found key in objectstore, returning 200, value: {}".format(server.id, object_store[key]))
+					self.send_whole_response(200, str(object_store[key]))
+				else:
+					print("server.id: {}, did not find key in objectstore, 404 and key: {}".format(server.id, key))
+					self.send_whole_response(404, "No object with key '%s' on this node" % key)
+
 			else:
 				#the value will be recursively returned
-				value = self.find_successor(address, self.path, "GET")
-				
-				#if the value existed somewhere we return 200 and value, else the value does not exist and we return 404
-				if value != None:
-					self.send_whole_response(200, value)
-				else:
+				print("key should not stored at server.id: {}, finding successor of address: {}".format(server.id, address))
+				value, status = self.find_successor(address, self.path, "GET", None)
+				print("server.id: {}, address: {}, got value: {} and status: {} from find successor".format(server.id, address, value, status))
+				#if the value existed somewhere we return 200 and valuaddress > server.predecessor
+				if status != 200:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
-				
+				else:
+					self.send_whole_response(200, str(value))
 
 		elif self.path.startswith("/neighbors"):
 			self.send_whole_response(200, neighbors)
 		else:
 			self.send_whole_response(404, "Unknown path: " + self.path)
+
+	def is_bewteen(self, id, predecessor, address):
+		gap = (server.M + id) - predecessor 
+		interval = predecessor + gap 
+		
+		count = predecessor
+		buffer = []
+
+		while(count < interval):
+			count +=1
+			buffer.append((count%server.M))
+					
+		if address in buffer:
+			return True
+
+		return False
 
 def arg_parser():
 	PORT_DEFAULT = 8000
@@ -176,6 +225,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		super(ThreadingHttpServer, self).__init__(*args, **kwargs)
 		self.finger_table = {}
 		self.M = 16 #must be an exponent of two, 2, 4, 8, 16, 32, 64 
+		self.predecessor = None
+		self.successor = None
 
 	def innit_(self, args):
 		"""
@@ -185,7 +236,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		example:
 		{2: ('localhost:8002', True)}, if you call: finger_table[2] then it would return ('localhost', True)
 		"""
-		self.finger_table = args.neighbors
+
 		self.id = int(args.port) % self.M
 		self.port = args.port
 
@@ -194,12 +245,16 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		gap = self.neigbhor_interval() #number of nodes between the server and its neihbor
 		interval = self.id + gap	# the highest number the nodes can map to its neighbor
 		
-		for i in range(np.log2(self.M)):
+
+		for i in range(int(np.log2(self.M))):
 			identity = (self.id + 2**i)
 			if identity <= interval:
 				self.finger_table[(identity % self.M)] = neighbors[0], True
 			else:
 				self.finger_table[(identity % self.M)] = False, False
+			
+			# print("serverid: {}, interval: {}, identity: {}, finger: {}".format(self.id , interval, (identity % self.M), self.finger_table[(identity % self.M)]))
+	
 
 	def neigbhor_interval(self):
 		"""
@@ -208,13 +263,16 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		fingers itself. server.id is 12 and the neighbor of 12 is 2, then there should be
 		6 nodes that maps to node 2, because each of those "x" nodes, would have node 2 as their successor node. 
 		"""
-		neighbor_port = (neighbors[0].split(':'))
-		neigbor_id = (int(neighbor_port[1]) % self.M)
+		successor_port = (neighbors[0].split(':'))
+		predecessor_port = (neighbors[1].split(':'))
+		
+		self.successor = (int(successor_port[1]) % self.M)
+		self.predecessor = (int(predecessor_port[1]) % self.M)
 
-		if neigbor_id < self.id:
-			interval = self.id - (self.M + neigbor_id)
+		if self.successor < self.id:
+			interval = (self.M + self.successor) - self.id
 		else:
-			interval = neigbor_id - self.id
+			interval = self.successor - self.id
 
 		return interval
 

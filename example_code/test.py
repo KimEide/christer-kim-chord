@@ -1,14 +1,25 @@
-request_buffer = []
+def is_bewteen(id, predecessor, address):
+		gap = (16 + id) - predecessor 
+		interval = predecessor + gap 
+		
+		count = predecessor
+		buffer = []
 
-key = 30 
+		while(count < interval):
+			count +=1
+			buffer.append((count%16))
+					
+		if address in buffer:
+			return True
 
-request_buffer.append(key)
+		return False 
+
+print(is_bewteen(2, 12, 0))
+print(is_bewteen(2, 12, 2))
+print(is_bewteen(2, 12, 15))
+print(is_bewteen(2, 12, 12))
+print(is_bewteen(2, 12, 3))
 
 
-if key in request_buffer:
-    request_buffer.pop(key)
 
-print(request_buffer)
-    
-                    
-                
+
