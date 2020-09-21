@@ -50,7 +50,6 @@ def get_neighbours(node):
     conn = http.client.HTTPConnection(node)
     conn.request("GET", "/neighbors")
     resp = conn.getresponse()
-    print(resp)
     if resp.status != 200:
         neighbors = []
     else:
@@ -74,19 +73,15 @@ def walk_neighbours(start_nodes):
 def simple_check(nodes):
     print("Simple put/get check, retreiving from same node ...")
 
-    tries = 1
+    tries = 10
     pairs = generate_pairs(tries)
 
     successes = 0
     node_index = 0
     for key, value in pairs.items():
         try:
-            print(nodes[node_index], (int(uuid.UUID(key))%16))
-
             put_value(nodes[node_index], key, value)
             returned = get_value(nodes[node_index], key)
-            print("sent", value)
-            print("returned", returned)
 
             if returned == value:
                 successes+=1
@@ -109,18 +104,11 @@ def retrieve_from_different_nodes(nodes):
     successes = 0
     for key, value in pairs.items():
         try:
-            addr1 = random.choice(nodes)
-            addr2 = random.choice(nodes)
-            put_value(addr1, key, value)
-            returned = get_value(addr2, key)
-            
-
+            put_value(random.choice(nodes), key, value)
+            returned = get_value(random.choice(nodes), key)
 
             if returned == value:
-                print("TRUE", addr1, addr2)
                 successes+=1
-            else:
-                print("FALSE", addr1, addr2)
         except:
             pass
 
@@ -152,9 +140,7 @@ def main(args):
     nodes = set(args.nodes)
     nodes |= walk_neighbours(args.nodes)
     nodes = list(nodes)
-    
     print("%d nodes registered: %s" % (len(nodes), ", ".join(nodes)))
-
 
     if len(nodes)==0:
         raise RuntimeError("No nodes registered to connect to")
@@ -162,17 +148,14 @@ def main(args):
     print()
     simple_check(nodes)
 
-    # print()
-    # retrieve_from_different_nodes(nodes)
+    print()
+    retrieve_from_different_nodes(nodes)
 
-    # print()
-    # get_nonexistent_key(nodes)
-
-    # print()
-    # for element in nodes:    
-    #     print(get_neighbours(element))
+    print()
+    get_nonexistent_key(nodes)
 
 if __name__ == "__main__":
+
     parser = arg_parser()
     args = parser.parse_args()
     main(args)

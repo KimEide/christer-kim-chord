@@ -54,13 +54,13 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		"""
 		#if the address resides within the fingertable, then contact the node directly
 		if address in server.finger_table and True in server.finger_table[address]:
-			full_address = server.finger_table[address]
+			full_address = server.finger_table[address][0]
 			response, status = self.get_value(full_address, path, method, value)
 		
 		else:#if its not in the fingertable, then we have to ask our neighbor
 			response, status = self.get_value(neighbors[0], path, method, value)	
 
-		return response.decode('utf-8'), status
+		return response, status
 
 	def extract_key_from_path(self, path):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
@@ -109,8 +109,6 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		#if not we should forward the request to find the correct node to store it on
 		if address <= server.id and address > server.predecessor:
 			object_store[key] = value.decode('utf-8')
-
-			print("------------------------------------",type(object_store[key]))
 			
 			# Send OK response
 			self.send_whole_response(200, "Value stored for " + key)
@@ -121,7 +119,6 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 			# print("server.id: {} lower than predecessor: {}".format(server.id, server.predecessor))
 			# print("address: {}, is between precedessor {} and server.id {}".format(address, server.predecessor, server.id))
 			object_store[key] = value.decode('utf-8')
-			print("------------------------------------",type(object_store[key]))
 			
 			# Send OK response
 			self.send_whole_response(200, "Value stored for " + key)
@@ -154,7 +151,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				print("address:{} <= server.id: {} and address: {} > predecessor: {} ".format(address, server.id, address, server.predecessor)) 
 				if key in object_store:
 					print("SUCCESS: VALUE IS: ",object_store[key])
-					self.send_whole_response(200, str(object_store[key]))
+					self.send_whole_response(200, object_store[key])
 				else:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 
@@ -164,7 +161,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				print("address: {}, is between precedessor {} and server.id {}".format(address, server.predecessor, server.id))
 				if key in object_store:
 					print("server.id: {}, found key in objectstore, returning 200, value: {}".format(server.id, object_store[key]))
-					self.send_whole_response(200, str(object_store[key]))
+					self.send_whole_response(200, object_store[key])
 				else:
 					print("server.id: {}, did not find key in objectstore, 404 and key: {}".format(server.id, key))
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
@@ -173,12 +170,13 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				#the value will be recursively returned
 				print("key should not stored at server.id: {}, finding successor of address: {}".format(server.id, address))
 				value, status = self.find_successor(address, self.path, "GET", None)
+				print("--------------------", type(value))
 				print("server.id: {}, address: {}, got value: {} and status: {} from find successor".format(server.id, address, value, status))
 				#if the value existed somewhere we return 200 and valuaddress > server.predecessor
 				if status != 200:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 				else:
-					self.send_whole_response(200, str(value))
+					self.send_whole_response(200, value)
 
 		elif self.path.startswith("/neighbors"):
 			self.send_whole_response(200, neighbors)
