@@ -54,7 +54,6 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
 	def get_value(self, node, path, method, content):
-		print("-------------------------", node, method)
 		conn = http.client.HTTPConnection(node)
 		if method == 'GET':
 			conn.request(method, path)
@@ -72,6 +71,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				contenttype = hv
 		if contenttype == "text/plain":
 			value = value.decode("utf-8")
+			print("-------------------------", value)
 		conn.close()
 		return value, resp.status
 

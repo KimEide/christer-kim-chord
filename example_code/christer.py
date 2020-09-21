@@ -45,6 +45,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		if address in server.finger_table and True in server.finger_table[address]:
 			full_address = server.finger_table[address][0]
 			response, status = self.get_value(full_address, path, method, value)
+			print("------------SUCCESSOR FT-------------", response)
 		else:
 			response, status = self.get_value(neighbors[0], path, method, value)	
 
@@ -54,7 +55,6 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
 	def get_value(self, node, path, method, content):
-		print("-------------------------", node, method)
 		conn = http.client.HTTPConnection(node)
 		if method == 'GET':
 			conn.request(method, path)
@@ -70,8 +70,9 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		for h, hv in headers:
 			if h=="Content-type":
 				contenttype = hv
-		if contenttype == "text/plain":
-			value = value.decode("utf-8")
+		# if contenttype == "text/plain":
+		# 	value = value.decode("utf-8")
+		# 	print("------------INSIDE GET VALUE-------------", value)
 		conn.close()
 		return value, resp.status
 

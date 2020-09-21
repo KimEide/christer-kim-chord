@@ -79,13 +79,18 @@ def simple_check(nodes):
     successes = 0
     node_index = 0
     for key, value in pairs.items():
-        try:
+        try:   
+            print(nodes[node_index], int(uuid.UUID(key))%16)
             put_value(nodes[node_index], key, value)
             returned = get_value(nodes[node_index], key)
+
+            print(value)
+            print(returned)
 
             if returned == value:
                 successes+=1
         except:
+            print("DOES THIS EVEN HAPPEN ?????!!!!!!??????!!!!????!!!")
             pass
 
         node_index = (node_index+1) % len(nodes)
@@ -152,8 +157,8 @@ def main(args):
     print()
     retrieve_from_different_nodes(nodes)
 
-    # print()
-    # get_nonexistent_key(nodes)
+    print()
+    get_nonexistent_key(nodes)
 
 if __name__ == "__main__":
     parser = arg_parser()
