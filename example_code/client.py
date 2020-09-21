@@ -142,6 +142,7 @@ def main(args):
     nodes = list(nodes)
     print("%d nodes registered: %s" % (len(nodes), ", ".join(nodes)))
 
+
     if len(nodes)==0:
         raise RuntimeError("No nodes registered to connect to")
 
@@ -151,11 +152,10 @@ def main(args):
     print()
     retrieve_from_different_nodes(nodes)
 
-    print()
-    get_nonexistent_key(nodes)
+    # print()
+    # get_nonexistent_key(nodes)
 
 if __name__ == "__main__":
-
     parser = arg_parser()
     args = parser.parse_args()
     main(args)
