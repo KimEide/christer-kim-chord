@@ -109,11 +109,16 @@ def retrieve_from_different_nodes(nodes):
     successes = 0
     for key, value in pairs.items():
         try:
-            put_value(random.choice(nodes), key, value)
-            returned = get_value(random.choice(nodes), key)
+            node1 = random.choice(nodes)
+            node2 = random.choice(nodes)
+            put_value(random.choice(node1), key, value)
+            returned = get_value(random.choice(node2), key)
 
             if returned == value:
+                print("TRUE", node1, node2)
                 successes+=1
+            else:
+                print("FALSE", node1, node2, returned)
         except:
             pass
 
