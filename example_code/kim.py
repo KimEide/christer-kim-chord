@@ -184,10 +184,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		{2: ('localhost:8002', True)}, if you call: finger_table[2] then it would return ('localhost', True)
 		"""
 		self.name = self.server_name.split('.')[0]
-		m = hashlib.sha1()
-		m.update(self.name.encode('utf-8'))
-		hash_id = m.hexdigest()
-		self.id = int(hash_id, 16) % self.M
+
+		self.id = self.hash_name(self.name) % self.M
 		self.port = args.port
 
 		#initializing the static variables of the finger table, each finger that is between the server and its neigbhor will map to the neighbor
@@ -217,8 +215,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		successor_port = (neighbors[0].split(':'))
 		predecessor_port = (neighbors[1].split(':'))
 		
-		self.successor = (int(successor_port[1]) % self.M)
-		self.predecessor = (int(predecessor_port[1]) % self.M)
+		self.successor = self.hash_name(successor_port[0]) % self.M
+		self.predecessor = self.hash_name(predecessor_port[0]) % self.M
 
 		if self.successor < self.id:
 			interval = (self.M + self.successor) - self.id
@@ -226,6 +224,11 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			interval = self.successor - self.id
 
 		return interval
+	
+	def hash_name(self, name):
+		m = hashlib.sha1()
+		m.update(name.encode('utf-8'))
+		return int(m.hexdigest(), 16)
 
 def run_server(args):
 	global server
