@@ -214,7 +214,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 
 		successor_port = (neighbors[0].split(':'))
 		predecessor_port = (neighbors[1].split(':'))
-		
+		print(successor_port[0])		
 		self.successor = self.hash_name(successor_port[0]) % self.M
 		self.predecessor = self.hash_name(predecessor_port[0]) % self.M
 

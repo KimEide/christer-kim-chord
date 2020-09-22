@@ -111,8 +111,8 @@ def retrieve_from_different_nodes(nodes):
         try:
             node1 = random.choice(nodes)
             node2 = random.choice(nodes)
-            put_value(random.choice(node1), key, value)
-            returned = get_value(random.choice(node2), key)
+            put_value(node1, key, value)
+            returned = get_value(node2, key)
 
             if returned == value:
                 print("TRUE", node1, node2)
