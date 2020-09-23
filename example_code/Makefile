@@ -1,6 +1,7 @@
 TARGS = compute hostfile createmany createone join client
 m = 16
-constant=$(head -n +1 $"constant.txt")
+c_file="constant.txt"
+constant=$(head -n +1 $"constant.txt") 
 
 all: $(TARGS)
 
@@ -20,7 +21,7 @@ join:
 	bash runjoin.sh
 
 client:
-	python3 client.py $constant:8000
+	bash runclient.sh
 
 clean:
 	rm -f compute.txt

@@ -68,14 +68,12 @@ def remove_duplicates(nodes, size):
 			if i == j:
 				j += 1
 				continue
-			print(i, j)
 			a = int(nodes[i].split(":")[0])
 			b = int(nodes[j].split(":")[0])
  
 			if a == b:
 				nodes.pop(j)
 				size -= 1
-				print("size:", size)
 	
 			j += 1
 		i += 1
