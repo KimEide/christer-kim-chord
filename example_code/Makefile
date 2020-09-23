@@ -19,7 +19,7 @@ createone:
 join:
 	bash runjoin.sh
 
-client:s
+client:
 	python3 client.py $constant:8000
 
 clean:

@@ -56,7 +56,7 @@ def hash_each(nodes, m):
 
 def remove_duplicates(nodes, size):
 	done = False
-
+	
 	i = 0
 	j = 0	
 
@@ -71,6 +71,8 @@ def remove_duplicates(nodes, size):
  
 			if a == b:
 				nodes.pop(j)
+				if len(nodes) <= 1:
+					break
 	
 			j += 1
 		i += 1
