@@ -151,6 +151,7 @@ def arg_parser():
 	PORT_DEFAULT = 8000
 	DIE_AFTER_SECONDS_DEFAULT = 20 * 60
 	parser = argparse.ArgumentParser(prog="node", description="DHT Node")
+	print(parser)
 
 	parser.add_argument("-p", "--port", type=int, default=PORT_DEFAULT,
 			help="port number to listen on, default %d" % PORT_DEFAULT)
@@ -183,6 +184,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		{2: ('localhost:8002', True)}, if you call: finger_table[2] then it would return ('localhost', True)
 		"""
 
+		self.name = socket.gethostname().split(".")[0]
 		self.id = int(args.port) % self.M
 		self.port = args.port
 
@@ -226,6 +228,7 @@ def run_server(args):
 	global server
 	global neighbors
 	global request_buffer
+	print(args)
 
 	neighbors = args.neighbors
 
