@@ -1,5 +1,6 @@
-TARGS = compute hostfile createmany createone join
+TARGS = compute hostfile createmany createone join client
 m = 16
+constant=$(head -n +1 $"constant.txt")
 
 all: $(TARGS)
 
@@ -17,6 +18,9 @@ createone:
 
 join:
 	bash runjoin.sh
+
+client:s
+	python3 client.py $constant:8000
 
 clean:
 	rm -f compute.txt
