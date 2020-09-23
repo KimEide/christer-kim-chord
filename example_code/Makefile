@@ -1,4 +1,4 @@
-TARGS = compute hostfile create join
+TARGS = compute hostfile createmany createone join
 m = 16
 
 all: $(TARGS)
@@ -9,12 +9,14 @@ compute:
 hostfile:
 	python3 genhostfile.py $m
 
-create:
+createmany:
+	bash runcluster.sh
+
+createone:
 	bash runcreate.sh
 
 join:
 	bash runjoin.sh
-
 
 clean:
 	rm -f compute.txt
