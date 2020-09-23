@@ -60,19 +60,22 @@ def remove_duplicates(nodes, size):
 	i = 0
 	j = 0	
 
-	while(i < len(nodes)):
+	while(i < size):
 		j = 0	
-		while(j < len(nodes)):
+		while(j < size):
+			if(i >= size):
+				i = 0
 			if i == j:
 				j += 1
 				continue
+			print(i, j)
 			a = int(nodes[i].split(":")[0])
 			b = int(nodes[j].split(":")[0])
  
 			if a == b:
 				nodes.pop(j)
-				if len(nodes) <= 1:
-					break
+				size -= 1
+				print("size:", size)
 	
 			j += 1
 		i += 1
