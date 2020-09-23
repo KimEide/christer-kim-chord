@@ -82,10 +82,10 @@ def simple_check(nodes):
         try:   
             print(nodes[node_index], int(uuid.UUID(key))%16)
             put_value(nodes[node_index], key, value)
-            returned = get_value(nodes[node_index], key)
-
             print(value)
+            returned = get_value(nodes[node_index], key)
             print(returned)
+
 
             if returned == value:
                 successes+=1

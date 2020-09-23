@@ -1,0 +1,1 @@
+/share/apps/ifi/available-nodes.sh | grep compute | shuf | tail -n +2 > compute.txt
