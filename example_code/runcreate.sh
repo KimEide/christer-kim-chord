@@ -6,7 +6,7 @@ file_to_write="constant.txt"
 node=$(head -n +1 "$filename") 
 echo $node > "$file_to_write" 
 
-ssh -f $node '"'python3 "$"PWD/christer-kim/example_code/christer.py -c True -p 8000'"'
+ssh -f $node '"'python3 "$"PWD/christer-kim/example_code/christer.py -c True -p 5231'"'
 
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 
