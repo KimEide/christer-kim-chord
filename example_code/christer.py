@@ -184,10 +184,12 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		self.port = args.port
 		
 		if args.cluster == True:
-			self.name = self.server_name.split('.')[0]+":"+str(self.port)
+			self.name = self.server_name.split('.')[0]#+":"+str(self.port)
+			self.address = self.name + ":" + str(self.port)
 			self.id = id_from_name(self.name, self.M)
 		else:
 			self.name = "localhost:"+str(self.port)
+			self.address = self.name
 			# self.id = int(args.port) % self.M
 			self.id = id_from_name(self.name, self.M)
 
@@ -229,12 +231,12 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.successor = id_from_name(s, self.M)
 				self.predecessor = id_from_name(p, self.M)
 
-				notify_successor(neighbors[0], self.name)
-				notify_predecessor(neighbors[1], self.name)
+				notify_successor(neighbors[0], self.address)
+				notify_predecessor(neighbors[1], self.address)
 
 			else:
-				neighbors[0] = self.name
-				neighbors[1] = self.name
+				neighbors[0] = self.address
+				neighbors[1] = self.address
 				self.successor = id_from_name(self.name, self.M)
 				self.predecessor = id_from_name(self.name, self.M)
 
