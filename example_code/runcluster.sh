@@ -1,4 +1,4 @@
-filename="hostfile-sorted.txt"
+filename="hostfile-random.txt"
 file_to_write="constant.txt"
 
 node1=$(head -n +1 "$filename") 
