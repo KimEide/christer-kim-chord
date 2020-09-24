@@ -1,5 +1,0 @@
-compute-5-1
-compute-3-3
-compute-2-1
-compute-6-11
-compute-6-35

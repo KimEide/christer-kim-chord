@@ -198,8 +198,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
-			self.successor = id_from_name(neighbors[0].split(":")[0], self.M)
-			self.predecessor = id_from_name(neighbors[1].split(":")[0], self.M)
+			self.successor = id_from_name(get_name_from_address(neighbors[0]), self.M)
+			self.predecessor = id_from_name(get_name_from_address(neighbors[1]), self.M)
 
 			print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
 			print(neighbors)
@@ -219,17 +219,15 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		else:
 			if args.join != None:
 				nodes = list(walk(args.join))
-				
 				nodes = mergeSort(nodes)
-				print(nodes)
 
 				p, s = self.find_placement(nodes)
 				
 				neighbors[0] = s
 				neighbors[1] = p
 
-				self.successor = id_from_name(s, self.M)
-				self.predecessor = id_from_name(p, self.M)
+				self.successor = id_from_name(get_name_from_address(s), self.M)
+				self.predecessor = id_from_name(get_name_from_address(p), self.M)
 
 				notify_successor(neighbors[0], self.address)
 				notify_predecessor(neighbors[1], self.address)
@@ -247,9 +245,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
 			for i in range(len(all_neighbors)):
-				a = id_from_name(all_neighbors[i], self.M)
+				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
 				b = self.id
-				c = id_from_name(all_neighbors[(i+1)%self.M], self.M)
+				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%self.M]), self.M)
 
 				if is_bewteen(a, b, c, self.M):
 					return all_neighbors[i], all_neighbors[(i+1)%self.M]
@@ -269,6 +267,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			interval = self.successor - self.id
 
 		return interval
+
+def get_name_from_address(address):
+	return address.split(":")[0]
 
 def mergeSort(arr): 
 	if len(arr) >1: 
