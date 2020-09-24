@@ -198,8 +198,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
-			self.successor = id_from_name(neighbors[0], self.M)
-			self.predecessor = id_from_name(neighbors[1], self.M)
+			self.successor = id_from_name(neighbors[0].split(":")[0], self.M)
+			self.predecessor = id_from_name(neighbors[1].split(":")[0], self.M)
 
 			print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
 			print(neighbors)
