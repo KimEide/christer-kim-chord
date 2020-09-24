@@ -52,15 +52,15 @@ def is_bewteen(a, b, c, m):
 # place = find_placement(neighbors, 11, 16)
 
 # print(place)
-node1="compute-8-12"
-node2="compute-6-16"
-node3="compute-3-25"
-node4="compute-3-10"
-node5="compute-2-2"
-print("node {} has hash {}".format(node1, id_from_name(node1, 16)))
-print("node {} has hash {}".format(node2, id_from_name(node2, 16)))
-print("node {} has hash {}".format(node3, id_from_name(node3, 16)))
-print("node {} has hash {}".format(node4, id_from_name(node4, 16)))
-print("node {} has hash {}".format(node5, id_from_name(node5, 16)))
+# node1="compute-8-12"
+# node2="compute-6-16"
+# node3="compute-3-25"
+# node4="compute-3-10"
+# node5="compute-2-2"
+# print("node {} has hash {}".format(node1, id_from_name(node1, 16)))
+# print("node {} has hash {}".format(node2, id_from_name(node2, 16)))
+# print("node {} has hash {}".format(node3, id_from_name(node3, 16)))
+# print("node {} has hash {}".format(node4, id_from_name(node4, 16)))
+# print("node {} has hash {}".format(node5, id_from_name(node5, 16)))
 
-
+print_all()
