@@ -85,6 +85,7 @@ def make_pretty(nodes):
 	sorted_pretty = mergeSort(nodes.copy())
 
 	for i in range(len(nodes)):
+		nodes[i] = nodes.split(":")[1]
 		sorted_pretty[i] = sorted_pretty[i].split(":")[1]
 
 	return sorted_pretty
@@ -123,11 +124,11 @@ def run(args):
 
 	no_duplicate = remove_duplicates(hash_nodes, len(nodes))
 
-	sorted_result = make_pretty(no_duplicate)
+	sorted_result, random = make_pretty(no_duplicate)
 	write_to_file("hostfile-sorted.txt", sorted_result)
 
-	random_sorted = pop_random_nodes(sorted_result, 10)
-	write_to_file("hostfile-random.txt", random_sorted)
+
+	write_to_file("hostfile-random.txt", random)
 
 
 run(int(sys.argv[1]))

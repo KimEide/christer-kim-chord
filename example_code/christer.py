@@ -81,24 +81,23 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		#if it starts with successor, then the node who sent the message is the servers predecessor
 		if self.path.startswith("/successor"):
 			p = self.extract_node_from_path(self.path)
+			print(p)
 
 			neighbors[1] = p
+			
 			server.predecessor = id_from_name(get_name_from_address(p), server.M)
 
-			print("id: {}, got new predecessor {}".format(server.id, server.predecessor))
-
-			self.send_whole_response(200, "node stored as predecessor "+str(p))
+			print("id: {}, got new predecessor: {}".format(server.id, server.predecessor))
 		
 		#if it starts with predecessor, then the node who sent the message is the servers successor
 		else:
 			if self.path.startswith("/predecessor"):
 				s = self.extract_node_from_path(self.path)
+				print(s)
 
 				neighbors[0] = s
 				server.successor = id_from_name(get_name_from_address(s), server.M)
 				print("id: {}, got new successor {}".format(server.id, server.successor))
-
-				self.send_whole_response(200, "node stored as successor "+str(s))
 
 
 	def do_PUT(self):
@@ -220,6 +219,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			if args.join != None:
 				nodes = list(walk(args.join))
 				nodes = mergeSort(nodes)
+				print("NODES:", nodes)
 
 				p, s = self.find_placement(nodes)
 				
@@ -229,29 +229,38 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.successor = id_from_name(get_name_from_address(s), self.M)
 				self.predecessor = id_from_name(get_name_from_address(p), self.M)
 
+				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
+
+
 				notify_successor(neighbors[0], self.address)
 				notify_predecessor(neighbors[1], self.address)
-
 			else:
 				neighbors[0] = self.address
 				neighbors[1] = self.address
-				self.successor = id_from_name(self.name, self.M)
-				self.predecessor = id_from_name(self.name, self.M)
+				
+				self.successor = id_from_name(get_name_from_address(self.address), self.M)
+				self.predecessor = id_from_name(get_name_from_address(self.address), self.M)
+				
+				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
+
 
 	
 	def find_placement(self, all_neighbors):
 		size = len(all_neighbors)
-		if size == 1:
+		if size <= 1:
 			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
 			for i in range(len(all_neighbors)):
+				# print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
 				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
 				b = self.id
-				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%self.M]), self.M)
+				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%size]), self.M)
 
 				if is_bewteen(a, b, c, self.M):
-					return all_neighbors[i], all_neighbors[(i+1)%self.M]
-		
+					print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
+					return all_neighbors[i], all_neighbors[(i+1)%size]
+			
+			print("returner ingenting!")
 		else:
 			print("unexpected error, size < 1")
 			quit()
@@ -269,6 +278,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		return interval
 
 def get_name_from_address(address):
+	if address.startswith("localhost"):
+		return address
+
 	return address.split(":")[0]
 
 def mergeSort(arr): 
@@ -282,7 +294,7 @@ def mergeSort(arr):
 
 		i = j = k = 0
 		while i < len(L) and j < len(R): 
-			if id_from_name(L[i], server.M) < id_from_name(R[j], server.M):
+			if id_from_name(get_name_from_address(L[i]), server.M) < id_from_name(get_name_from_address(R[j]), server.M):
 				arr[k] = L[i] 
 				i+= 1
 			else: 
@@ -312,7 +324,7 @@ def hash_name(name):
 
 def is_bewteen(a, b, c, m):
 	buffer = []
-	
+
 	gap = (c-a)
 	if gap < 0:
 		c = 16+c
@@ -362,13 +374,11 @@ def neighbours(node):
 def notify_successor(node, message):
     conn = http.client.HTTPConnection(node)
     conn.request("POST", "/successor/"+str(message))
-    conn.getresponse()
     conn.close()
 
 def notify_predecessor(node, message):
     conn = http.client.HTTPConnection(node)
     conn.request("POST", "/predecessor/"+str(message))
-    conn.getresponse()
     conn.close()
 
 def arg_parser():
