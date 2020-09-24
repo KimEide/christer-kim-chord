@@ -126,7 +126,7 @@ def run(args):
 	sorted_result = make_pretty(no_duplicate)
 	write_to_file("hostfile-sorted.txt", sorted_result)
 
-	random_sorted = pop_random_nodes(sorted_result, 5)
+	random_sorted = pop_random_nodes(sorted_result, 10)
 	write_to_file("hostfile-random.txt", random_sorted)
 
 

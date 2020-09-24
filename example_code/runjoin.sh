@@ -1,5 +1,5 @@
 #!/bin/bash
-filename="hostfile-sorted.txt"
+filename="hostfile-random.txt"
 c_file="constant.txt"
 
 node=$(head -n +1 "$filename") 
