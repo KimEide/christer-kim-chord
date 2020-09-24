@@ -196,23 +196,32 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
-			#mapping fingers based on the neighbors
-			gap = self.neigbhor_interval()
-			interval = self.id + gap
+			self.successor = id_from_name(neighbors[0], self.M)
+			self.predecessor = id_from_name(neighbors[1], self.M)
+
+			print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
+			print(neighbors)
 			
-			for i in range(int(np.log2(self.M))):
-				identity = (self.id + 2**i)
-				if identity <= interval:
-					self.finger_table[(identity % self.M)] = neighbors[0], True
-				else:
-					self.finger_table[(identity % self.M)] = False, False
+			#mapping fingers based on the neighbors
+			# gap = self.neigbhor_interval()
+			# interval = self.id + gap
+			
+			# for i in range(int(np.log2(self.M))):
+			# 	identity = (self.id + 2**i)
+			# 	if identity <= interval:
+			# 		self.finger_table[(identity % self.M)] = neighbors[0], True
+			# 	else:
+			# 		self.finger_table[(identity % self.M)] = False, False
 		
 		#this means that a join opperation should be ran
 		else:
 			if args.join != None:
-				nodes = list(walk_neighbours(args.join))
+				nodes = list(walk(args.join))
+				
+				nodes = mergeSort(nodes)
+				print(nodes)
 
-				s, p = self.find_placement(nodes)
+				p, s = self.find_placement(nodes)
 				
 				neighbors[0] = s
 				neighbors[1] = p
@@ -230,22 +239,18 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.predecessor = id_from_name(self.name, self.M)
 
 	
-	def find_placement(self, nodes):
-		size = len(nodes)
+	def find_placement(self, all_neighbors):
+		size = len(all_neighbors)
 		if size == 1:
-			return nodes[0], nodes[0]
+			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
-			for i in range(len(nodes)):
-				a = id_from_name(nodes[i], self.M)
+			for i in range(len(all_neighbors)):
+				a = id_from_name(all_neighbors[i], self.M)
 				b = self.id
-				c = id_from_name(nodes[(i+1)%self.M], self.M)
+				c = id_from_name(all_neighbors[(i+1)%self.M], self.M)
 
 				if is_bewteen(a, b, c, self.M):
-					return node[i], node[(i+1)%self.M]
-			
-			else:
-				print("unexpected error")
-				quit()
+					return all_neighbors[i], all_neighbors[(i+1)%self.M]
 		
 		else:
 			print("unexpected error, size < 1")
@@ -262,6 +267,37 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			interval = self.successor - self.id
 
 		return interval
+
+def mergeSort(arr): 
+	if len(arr) >1: 
+		mid = len(arr)//2 
+		L = arr[:mid] 
+		R = arr[mid:] 
+
+		mergeSort(L)
+		mergeSort(R) 
+
+		i = j = k = 0
+		while i < len(L) and j < len(R): 
+			if id_from_name(L[i], server.M) < id_from_name(R[j], server.M):
+				arr[k] = L[i] 
+				i+= 1
+			else: 
+				arr[k] = R[j] 
+				j+= 1
+			k+= 1
+ 
+		while i < len(L): 
+			arr[k] = L[i] 
+			i+= 1
+			k+= 1
+
+		while j < len(R): 
+			arr[k] = R[j] 
+			j+= 1
+			k+= 1 
+	
+	return arr
 
 def id_from_name(name, m):
 	return hash_name(name) % m
@@ -287,7 +323,7 @@ def is_bewteen(a, b, c, m):
 
 	return False
 
-def walk_neighbours(start_nodes):
+def walk(start_nodes):
 	"""
 	borrowed from the client.py in the handout
 	"""
@@ -297,14 +333,14 @@ def walk_neighbours(start_nodes):
 	while to_visit:
 		next_node = to_visit.pop()
 		visited.add(next_node)
-		neighbors = get_neighbours(next_node)
+		neighbors = neighbours(next_node)
 		for neighbor in neighbors:
 			if neighbor not in visited:
 				to_visit.append(neighbor)
 	
 	return visited
 
-def get_neighbours(node):
+def neighbours(node):
 	"""
 	borrowed from the client.py in the handout
 	"""
