@@ -85,10 +85,10 @@ def make_pretty(nodes):
 	sorted_pretty = mergeSort(nodes.copy())
 
 	for i in range(len(nodes)):
-		nodes[i] = nodes.split(":")[1]
+		nodes[i] = nodes[i].split(":")[1]
 		sorted_pretty[i] = sorted_pretty[i].split(":")[1]
 
-	return sorted_pretty
+	return sorted_pretty, nodes
 
 def write_to_file(filename, nodes):
 
