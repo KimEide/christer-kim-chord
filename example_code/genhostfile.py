@@ -2,6 +2,7 @@ import numpy as np
 import uuid 
 import hashlib
 import sys
+from random import randint
 
 def mergeSort(arr): 
 	"""mergesort from geeksforgeeks"""
@@ -84,10 +85,9 @@ def make_pretty(nodes):
 	sorted_pretty = mergeSort(nodes.copy())
 
 	for i in range(len(nodes)):
-		nodes[i] = nodes[i].split(":")[1]
 		sorted_pretty[i] = sorted_pretty[i].split(":")[1]
 
-	return sorted_pretty, nodes
+	return sorted_pretty
 
 def write_to_file(filename, nodes):
 
@@ -98,6 +98,15 @@ def write_to_file(filename, nodes):
 		f.write("\n")
 	
 	f.close()
+
+def pop_random_nodes(all_nodes, size):
+
+	while(len(all_nodes) > size):
+		index = 0
+		index += randint(0, (len(all_nodes)-1))
+		all_nodes.pop(index)
+	
+	return all_nodes
 
 def run(args):
 	try:
@@ -114,9 +123,10 @@ def run(args):
 
 	no_duplicate = remove_duplicates(hash_nodes, len(nodes))
 
-	sorted_result, random_result = make_pretty(no_duplicate)
-
+	sorted_result = make_pretty(no_duplicate)
 	write_to_file("hostfile-sorted.txt", sorted_result)
+
+	random_sorted = pop_random_nodes(sorted_result, 5)
 	write_to_file("hostfile-random.txt", random_result)
 
 
