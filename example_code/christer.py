@@ -83,7 +83,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 			p = self.extract_node_from_path(self.path)
 
 			neighbors[1] = p
-			server.predecessor = id_from_name(p, server.M)
+			server.predecessor = id_from_name(get_name_from_address(p), server.M)
 
 			print("id: {}, got new predecessor {}".format(server.id, server.predecessor))
 
@@ -95,7 +95,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				s = self.extract_node_from_path(self.path)
 
 				neighbors[0] = s
-				server.successor = id_from_name(s, server.M)
+				server.successor = id_from_name(get_name_from_address(s), server.M)
 				print("id: {}, got new successor {}".format(server.id, server.successor))
 
 				self.send_whole_response(200, "node stored as successor "+str(s))
