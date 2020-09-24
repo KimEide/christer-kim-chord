@@ -127,7 +127,7 @@ def run(args):
 	write_to_file("hostfile-sorted.txt", sorted_result)
 
 	random_sorted = pop_random_nodes(sorted_result, 5)
-	write_to_file("hostfile-random.txt", random_result)
+	write_to_file("hostfile-random.txt", random_sorted)
 
 
 run(int(sys.argv[1]))
