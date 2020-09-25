@@ -1,6 +1,11 @@
 #!/bin/bash
 #create the first node in the chordprotocol.
-filename="hostfile-random.txt"
+
+/share/apps/ifi/available-nodes.sh | grep compute | shuf | tail -n +2 > compute.txt
+m=16
+python3 genhostfile.py $m
+
+filename="hostfile-sorted.txt"
 file_to_write="constant.txt"
 
 node=$(head -n +1 "$filename") 
@@ -10,7 +15,4 @@ tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 
 ssh $node python3 $PWD/christer.py -c True -p 5231
 
-
-
-#ssh -f compute-7-7 "python3 $PWD/christer-kim/example_code/christer.py -p 8012
-#ssh -f compute-3-15 "python3 /home/christer/Desktop/christer-kim/example_code/christer-kim/example_code/christer.py -c True -j compute-3-15:8000"
+#tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"

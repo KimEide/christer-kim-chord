@@ -254,13 +254,11 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				# print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
 				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
 				b = self.id
-				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%size]), self.M)
+				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%len(all_neighbors)]), self.M)
 
 				if is_bewteen(a, b, c, self.M):
-					print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
-					return all_neighbors[i], all_neighbors[(i+1)%size]
-			
-			print("returner ingenting!")
+					return all_neighbors[i], all_neighbors[(i+1)%len(all_neighbors)]
+		
 		else:
 			print("unexpected error, size < 1")
 			quit()

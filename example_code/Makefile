@@ -24,9 +24,5 @@ client:
 	bash runclient.sh
 
 clean:
-	rm -f compute.txt
-	rm -f constant.txt
-	rm -f hostfile-random.txt
-	rm -f hostfile-sorted.txt
-
+	rm -f *.txt *.tmp
 
