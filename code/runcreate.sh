@@ -13,4 +13,4 @@ echo $node > "$file_to_write"
  
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 
-ssh $node python3 $PWD/christer.py -c True -p 5231
+ssh $node python3 $PWD/node.py -c True -p 5231
