@@ -16,31 +16,31 @@ kill -9 $(sudo lsof -t -i:8015)
 kill -9 $(sudo lsof -t -i:8005) 
 
 python3 christer.py -p 8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8019 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8010 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8022 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8036 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8012 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8014 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8024 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8026 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8009 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8049 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8063 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8015 -j localhost:8007 &
-sleep 1
+sleep .05
 python3 christer.py -p 8005 -j localhost:8007 
 
 

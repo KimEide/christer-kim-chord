@@ -42,15 +42,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		self.end_headers()
 		self.wfile.write(content)
 
-	def find_successor(self, address, path, method, value):
-		if address in server.finger_table and True in server.finger_table[address]:
-			full_address = server.finger_table[address][0]
-			response, status = self.get_value(full_address, path, method, value)
-		else:
-			response, status = self.get_value(neighbors[0], path, method, value)	
-
-		return response, status
-
+	
 	def extract_key_from_path(self, path):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
@@ -58,46 +50,37 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		return path.split("/")[2]
 
 
-	def get_value(self, node, path, method, content):
-		conn = http.client.HTTPConnection(node)
-		if method == 'GET':
-			conn.request(method, path)
-		else: 
-			conn.request(method, path, content)
-		resp = conn.getresponse()
-		headers = resp.getheaders()
-		if resp.status != 200:
-			value = None
-		else:
-			value = resp.read()
-		contenttype = "text/plain"
-		for h, hv in headers:
-			if h=="Content-type":
-				contenttype = hv
-		conn.close()
-		return value, resp.status
 	
 	def do_POST(self):
 		#if it starts with successor, then the node who sent the message is the servers predecessor
 		if self.path.startswith("/successor"):
+			fix_f = False
 			p = self.extract_node_from_path(self.path)
-			print(p)
 
 			neighbors[1] = p
-			
+
+			if server.predecessor != server.id:
+				# print("GIKK GJEJNNOM---------------------------------")
+				fix_f = True
+
 			server.predecessor = id_from_name(get_name_from_address(p), server.M)
 
-			print("id: {}, got new predecessor: {}".format(server.id, server.predecessor))
+			# print("id: {}, got new predecessor: {}".format(server.id, server.predecessor))
+			
+			if fix_f == True:
+				server.fix_fingers()
+		
 		
 		#if it starts with predecessor, then the node who sent the message is the servers successor
 		else:
 			if self.path.startswith("/predecessor"):
 				s = self.extract_node_from_path(self.path)
-				print(s)
-
+				
 				neighbors[0] = s
 				server.successor = id_from_name(get_name_from_address(s), server.M)
-				print("id: {}, got new successor {}".format(server.id, server.successor))
+				# print("id: {}, got new successor {}".format(server.id, server.successor))
+			
+			server.fix_fingers()
 
 
 	def do_PUT(self):
@@ -125,7 +108,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 
 			self.send_whole_response(200, "Value stored for " + key)
 		else:
-			response, status = self.find_successor(address, self.path, "PUT", value)
+			response, status = find_successor(address, self.path, "PUT", value, False, False)
 			self.send_whole_response(200, "Value stored for " + key)
 		
 	
@@ -158,19 +141,63 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 
 			else:
-				value, status = self.find_successor(address, self.path, "GET", None)
+				value, status = find_successor(address, self.path, "GET", None, False, False)
 		
 				if status != 200:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 				else:
 					self.send_whole_response(200, value)
+		
+		elif self.path.startswith("/finger"):
+			address = int(self.extract_node_from_path(self.path))
+			# print("server.id {}, got finger request, self.path {}, address became {}".format(server.id, self.path, address))
+
+			if address == server.id:
+				# print("address == id")
+				self.send_whole_response(200, server.address)
+
+			elif address < server.id:
+				if address > server.predecessor:
+					#print("address < id, returning the id number: {} address".format(server.id))
+					self.send_whole_response(200, server.address)
+				
+				elif address == server.predecessor:
+					# print("address == predecessor, returning the id number: {} address".format(server.predecessor))
+					self.send_whole_response(200, neighbors[1])
+				
+				else:
+					# print("address  {} was lower than server.id {}, but we need to forward it".format(address, server.id))
+					value, status = find_successor(address, self.path, "GET", None, True,  True)
+
+					if status != 200:
+						self.send_whole_response(404, "No object with key '%s' on this node" % key)
+					else:
+						self.send_whole_response(200, value)
+			
+			#if address > server.id:
+			else:
+				if address <= server.successor:
+					self.send_whole_response(200, neighbors[0])
+				
+				if address > server.successor:
+					if is_bewteen(server.predecessor, address, server.id, server.M):
+						self.send_whole_response(200, server.address)
+					else:
+						value, status = find_successor(address, self.path, "GET", None, True, False)
+
+						if status != 200:
+							self.send_whole_response(404, "No object with key '%s' on this node" % key)
+						else:
+							self.send_whole_response(200, value)
+
+
 
 		elif self.path.startswith("/neighbors"):
 			self.send_whole_response(200, neighbors)
 		else:
 			self.send_whole_response(404, "Unknown path: " + self.path)
 
-class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
+class ThreadingHttpServer(socketserver.ThreadingMixIn, HTTPServer):
 	def __init__(self, *args, **kwargs):    
 		super(ThreadingHttpServer, self).__init__(*args, **kwargs)
 		self.finger_table = {}
@@ -193,33 +220,20 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			self.id = id_from_name(self.name, self.M)
 
 		
-		print("id calculated from hash is: {}".format(self.id))
+		# print("id calculated from hash is: {}".format(self.id))
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
 			self.successor = id_from_name(get_name_from_address(neighbors[0]), self.M)
 			self.predecessor = id_from_name(get_name_from_address(neighbors[1]), self.M)
 
-			print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
-			print(neighbors)
+			# print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
+			#print(neighbors)
 			
-			#mapping fingers based on the neighbors
-			# gap = self.neigbhor_interval()
-			# interval = self.id + gap
-			
-			# for i in range(int(np.log2(self.M))):
-			# 	identity = (self.id + 2**i)
-			# 	if identity <= interval:
-			# 		self.finger_table[(identity % self.M)] = neighbors[0], True
-			# 	else:
-			# 		self.finger_table[(identity % self.M)] = False, False
-		
-		#this means that a join opperation should be ran
 		else:
 			if args.join != None:
 				nodes = list(walk(args.join))
 				nodes = mergeSort(nodes)
-				print("NODES:", nodes)
 
 				p, s = self.find_placement(nodes)
 				
@@ -229,11 +243,22 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.successor = id_from_name(get_name_from_address(s), self.M)
 				self.predecessor = id_from_name(get_name_from_address(p), self.M)
 
-				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
-
-
+				# print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
+				
+				# for i in range(int(np.log2(self.M))):
+				# 	if self.id + (2**i) <= id_from_name(get_name_from_address(neighbors[0]), self.M):
+				# 		self.finger_table[self.id + (2**i)] = neighbors[0] 
+				# 		print("server.id:{} finger id: {} now maps to: {}".format(server.id, (self.id + (2**i)), id_from_name(get_name_from_address(self.finger_table[(self.id + (2**i))]), self.M)))
+				# 	elif is_bewteen(self.id, (self.id + (2**i)), id_from_name(get_name_from_address(neighbors[0]), self.M), self.M):
+				# 		self.finger_table[self.id + (2**i)] = neighbors[0] 
+				# 		print("server.id:{} finger id: {} now maps to: {}".format(server.id, (self.id + (2**i)), id_from_name(get_name_from_address(self.finger_table[(self.id + (2**i))]), self.M)))
+				# 	else:
+				# 		pass
 				notify_successor(neighbors[0], self.address)
 				notify_predecessor(neighbors[1], self.address)
+				
+				self.fix_fingers()
+
 			else:
 				neighbors[0] = self.address
 				neighbors[1] = self.address
@@ -241,39 +266,93 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.successor = id_from_name(get_name_from_address(self.address), self.M)
 				self.predecessor = id_from_name(get_name_from_address(self.address), self.M)
 				
-				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
+				# print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
 
-
-	
 	def find_placement(self, all_neighbors):
 		size = len(all_neighbors)
 		if size <= 1:
 			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
 			for i in range(len(all_neighbors)):
-				# print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
 				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
 				b = self.id
 				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%len(all_neighbors)]), self.M)
 
 				if is_bewteen(a, b, c, self.M):
 					return all_neighbors[i], all_neighbors[(i+1)%len(all_neighbors)]
-		
 		else:
-			print("unexpected error, size < 1")
+			print("unexpected error")
 			quit()
 
+	def fix_fingers(self):
+		for i in range(int(np.log2(self.M))):
+			finger_id = ((self.id + 2**(i))%self.M)
+			
+			path = "/finger/" + str(finger_id) 
+			
+			value, status = find_successor(finger_id, path, "GET", None, True, False)
+			
+			self.finger_table[finger_id] = value.decode('utf-8')
+			
+		
+			print("finger table entry: ", self.finger_table[finger_id])
+			print("server.id:{} finger id: {} now maps to: {}".format(server.id, finger_id, id_from_name(get_name_from_address(self.finger_table[finger_id]), self.M)))
 
-	def neigbhor_interval(self):
-		self.successor = id_from_name(neighbors[0], self.M)
-		self.predecessor = id_from_name(neighbors[1], self.M)
-
-		if self.successor < self.id:
-			interval = (self.M + self.successor) - self.id
+def find_successor(address, path, method, value, fix, lower):
+	if fix == True:
+		# print("-----fix true---------")
+		if lower == True:
+			# print("server.id {}, forwarding to predecessor".format(server.id))
+			response, status = get_value(neighbors[1], path, method, value)	
 		else:
-			interval = self.successor - self.id
+			# print("server.id {}, forwarding to neighbor".format(server.id))
+			response, status = get_value(neighbors[0], path, method, value)	
 
-		return interval
+	elif address in server.finger_table:
+			
+		print()
+		print()
+		print("----------------------using fingertable!-------------------------")
+		print("server.id {}, address wanted: {}, forwarding to: {}".format(server.id, address, id_from_name(get_name_from_address(server.finger_table[address]), server.M)))
+		
+		full_address = server.finger_table[address]
+		response, status = get_value(full_address, path, method, value)
+	else:
+		var = 0
+		for i in server.finger_table:
+			if is_bewteen(server.id, i, address, server.M):
+				print(server.id, i, address, id_from_name(get_name_from_address(neighbors[0]),server.M))
+				var = server.finger_table[i]
+
+		if var == 0:
+			var = neighbors[0]
+		elif id_from_name(get_name_from_address(var),server.M) < server.successor:
+			server.fix_fingers()
+
+		
+		# print("server.id {}, forwarding to highest possible finger: {}, address: {}".format(server.id, id_from_name(get_name_from_address(var), server.M), address))
+		response, status = get_value(var, path, method, value)	
+
+	return response, status
+
+def get_value(node, path, method, content):
+	conn = http.client.HTTPConnection(node)
+	if method == 'GET':
+		conn.request(method, path)
+	else: 
+		conn.request(method, path, content)
+	resp = conn.getresponse()
+	headers = resp.getheaders()
+	if resp.status != 200:
+		value = None
+	else:
+		value = resp.read()
+	contenttype = "text/plain"
+	for h, hv in headers:
+		if h=="Content-type":
+			contenttype = hv
+	conn.close()
+	return value, resp.status
 
 def get_name_from_address(address):
 	if address.startswith("localhost"):

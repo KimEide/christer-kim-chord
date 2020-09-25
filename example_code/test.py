@@ -63,4 +63,22 @@ def is_bewteen(a, b, c, m):
 # print("node {} has hash {}".format(node4, id_from_name(node4, 16)))
 # print("node {} has hash {}".format(node5, id_from_name(node5, 16)))
 
-print_all()
+# print_all()
+
+
+def noe(ft):
+	var = 0
+	for i in ft:
+		if int(i) < 7:
+			var = i
+
+	print(var)
+
+finger_table = {}
+
+finger_table[1] = "1"
+finger_table[2] = "2"
+finger_table[3] = "4"
+finger_table[4] = "8"
+
+noe(finger_table)
