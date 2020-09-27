@@ -81,24 +81,18 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		#if it starts with successor, then the node who sent the message is the servers predecessor
 		if self.path.startswith("/successor"):
 			p = self.extract_node_from_path(self.path)
-			print(p)
 
 			neighbors[1] = p
 			
 			server.predecessor = id_from_name(get_name_from_address(p), server.M)
-
-			print("id: {}, got new predecessor: {}".format(server.id, server.predecessor))
 		
 		#if it starts with predecessor, then the node who sent the message is the servers successor
 		else:
 			if self.path.startswith("/predecessor"):
 				s = self.extract_node_from_path(self.path)
-				print(s)
 
 				neighbors[0] = s
 				server.successor = id_from_name(get_name_from_address(s), server.M)
-				print("id: {}, got new successor {}".format(server.id, server.successor))
-
 
 	def do_PUT(self):
 
@@ -189,37 +183,19 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		else:
 			self.name = "localhost:"+str(self.port)
 			self.address = self.name
-			# self.id = int(args.port) % self.M
 			self.id = id_from_name(self.name, self.M)
 
-		
-		print("id calculated from hash is: {}".format(self.id))
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
 			self.successor = id_from_name(get_name_from_address(neighbors[0]), self.M)
 			self.predecessor = id_from_name(get_name_from_address(neighbors[1]), self.M)
 
-			print("id: {}, successor: {}, predecessor: {}".format(self.id, self.successor, self.predecessor))
-			print(neighbors)
-			
-			#mapping fingers based on the neighbors
-			# gap = self.neigbhor_interval()
-			# interval = self.id + gap
-			
-			# for i in range(int(np.log2(self.M))):
-			# 	identity = (self.id + 2**i)
-			# 	if identity <= interval:
-			# 		self.finger_table[(identity % self.M)] = neighbors[0], True
-			# 	else:
-			# 		self.finger_table[(identity % self.M)] = False, False
-		
 		#this means that a join opperation should be ran
 		else:
 			if args.join != None:
 				nodes = list(walk(args.join))
 				nodes = mergeSort(nodes)
-				print("NODES:", nodes)
 
 				p, s = self.find_placement(nodes)
 				
@@ -229,9 +205,6 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.successor = id_from_name(get_name_from_address(s), self.M)
 				self.predecessor = id_from_name(get_name_from_address(p), self.M)
 
-				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
-
-
 				notify_successor(neighbors[0], self.address)
 				notify_predecessor(neighbors[1], self.address)
 			else:
@@ -240,18 +213,13 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				
 				self.successor = id_from_name(get_name_from_address(self.address), self.M)
 				self.predecessor = id_from_name(get_name_from_address(self.address), self.M)
-				
-				print("id: {}, got successor: {} and predecessor: {}".format(self.id, self.successor, self.predecessor))
 
-
-	
 	def find_placement(self, all_neighbors):
 		size = len(all_neighbors)
 		if size <= 1:
 			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
 			for i in range(len(all_neighbors)):
-				# print("iopwejfopwjefopjwef", all_neighbors[i], all_neighbors[(i+1)%size])
 				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
 				b = self.id
 				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%len(all_neighbors)]), self.M)
@@ -262,7 +230,6 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		else:
 			print("unexpected error, size < 1")
 			quit()
-
 
 	def neigbhor_interval(self):
 		self.successor = id_from_name(neighbors[0], self.M)
@@ -413,7 +380,6 @@ def run_server(args):
 	global server
 	global neighbors
 	global request_buffer
-	print(args)
 
 	neighbors = args.neighbors
 
@@ -439,15 +405,6 @@ def run_server(args):
 	signal.signal(signal.SIGTERM, shutdown_server_on_signal)
 	signal.signal(signal.SIGINT, shutdown_server_on_signal)
 
-	# Wait on server thread, until timeout has elapsed
-	#
-	# Note: The timeout parameter here is also important for catching OS
-	# signals, so do not remove it.
-	#
-	# Having a timeout to check for keeps the waiting thread active enough to
-	# check for signals too. Without it, the waiting thread will block so
-	# completely that it won't respond to Ctrl-C or SIGTERM. You'll only be
-	# able to kill it with kill -9.
 	thread.join(args.die_after_seconds)
 	if thread.is_alive():
 		print("Reached %.3f second timeout. Asking server to shut down" % args.die_after_seconds)
