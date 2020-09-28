@@ -84,7 +84,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 
 			neighbors[1] = p
 			
-			server.predecessor = id_from_name(get_name_from_address(p), server.M)
+			server.predecessor = id_from_name(p)
 		
 		#if it starts with predecessor, then the node who sent the message is the servers successor
 		else:
@@ -92,7 +92,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				s = self.extract_node_from_path(self.path)
 
 				neighbors[0] = s
-				server.successor = id_from_name(get_name_from_address(s), server.M)
+				server.successor = id_from_name(s)
 
 	def do_PUT(self):
 
@@ -179,17 +179,17 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		if args.cluster == True:
 			self.name = self.server_name.split('.')[0]#+":"+str(self.port)
 			self.address = self.name + ":" + str(self.port)
-			self.id = id_from_name(self.name, self.M)
+			self.id = id_from_name(self.name)
 		else:
 			self.name = "localhost:"+str(self.port)
 			self.address = self.name
-			self.id = id_from_name(self.name, self.M)
+			self.id = id_from_name(self.name)
 
 
 		#this will only happen when several instances of the api is run at the same time
 		if neighbors[0] != None and neighbors[1] != None:
-			self.successor = id_from_name(get_name_from_address(neighbors[0]), self.M)
-			self.predecessor = id_from_name(get_name_from_address(neighbors[1]), self.M)
+			self.successor = id_from_name(neighbors[0])
+			self.predecessor = id_from_name(neighbors[1])
 
 		#this means that a join opperation should be ran
 		else:
@@ -202,8 +202,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				neighbors[0] = s
 				neighbors[1] = p
 
-				self.successor = id_from_name(get_name_from_address(s), self.M)
-				self.predecessor = id_from_name(get_name_from_address(p), self.M)
+				self.successor = id_from_name(s)
+				self.predecessor = id_from_name(p)
 
 				notify_successor(neighbors[0], self.address)
 				notify_predecessor(neighbors[1], self.address)
@@ -211,8 +211,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				neighbors[0] = self.address
 				neighbors[1] = self.address
 				
-				self.successor = id_from_name(get_name_from_address(self.address), self.M)
-				self.predecessor = id_from_name(get_name_from_address(self.address), self.M)
+				self.successor = id_from_name(self.address)
+				self.predecessor = id_from_name(self.address)
 
 	def find_placement(self, all_neighbors):
 		size = len(all_neighbors)
@@ -220,9 +220,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			return all_neighbors[0], all_neighbors[0]
 		elif size >= 2:
 			for i in range(len(all_neighbors)):
-				a = id_from_name(get_name_from_address(all_neighbors[i]), self.M)
+				a = id_from_name(all_neighbors[i])
 				b = self.id
-				c = id_from_name(get_name_from_address(all_neighbors[(i+1)%len(all_neighbors)]), self.M)
+				c = id_from_name(all_neighbors[(i+1)%len(all_neighbors)])
 
 				if is_bewteen(a, b, c, self.M):
 					return all_neighbors[i], all_neighbors[(i+1)%len(all_neighbors)]
@@ -232,8 +232,8 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			quit()
 
 	def neigbhor_interval(self):
-		self.successor = id_from_name(neighbors[0], self.M)
-		self.predecessor = id_from_name(neighbors[1], self.M)
+		self.successor = id_from_name(neighbors[0])
+		self.predecessor = id_from_name(neighbors[1])
 
 		if self.successor < self.id:
 			interval = (self.M + self.successor) - self.id
@@ -249,6 +249,7 @@ def get_name_from_address(address):
 	return address.split(":")[0]
 
 def mergeSort(arr): 
+	""" Borrowed from geeksforgeeks.com """
 	if len(arr) >1: 
 		mid = len(arr)//2 
 		L = arr[:mid] 
@@ -259,7 +260,7 @@ def mergeSort(arr):
 
 		i = j = k = 0
 		while i < len(L) and j < len(R): 
-			if id_from_name(get_name_from_address(L[i]), server.M) < id_from_name(get_name_from_address(R[j]), server.M):
+			if id_from_name(L[i]) < id_from_name(R[j]):
 				arr[k] = L[i] 
 				i+= 1
 			else: 
@@ -279,8 +280,11 @@ def mergeSort(arr):
 	
 	return arr
 
-def id_from_name(name, m):
-	return hash_name(name) % m
+def id_from_name(name):
+	if not name.startswith("localhost"):
+		name = name.split(":")[0]
+
+	return hash_name(name) % server.M
 
 def hash_name(name):
 	m = hashlib.sha1()
