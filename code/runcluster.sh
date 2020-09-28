@@ -20,12 +20,12 @@ tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 node5=$(head -n +1 "$filename")
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 
-ssh $node1 python3 $PWD/node.py -p $port -c True $node2:$port $node5:$port &
+ssh -f $node1 "python3 $PWD/node.py -p $port -c True"  &
 sleep .05
-ssh $node2 python3 $PWD/node.py -p $port -c True $node3:$port $node1:$port &
+ssh -f $node2 "python3 $PWD/node.py -p $port -c True -j $node1:$port" &
 sleep .05
-ssh $node3 python3 $PWD/node.py -p $port -c True $node4:$port $node2:$port &
+ssh -f $node3 "python3 $PWD/node.py -p $port -c True -j $node1:$port" &
 sleep .05
-ssh $node4 python3 $PWD/node.py -p $port -c True $node5:$port $node3:$port &
+ssh -f $node4 "python3 $PWD/node.py -p $port -c True -j $node1:$port" &
 sleep .05
-ssh $node5 python3 $PWD/node.py -p $port -c True $node1:$port $node4:$port 
+ssh -f $node5 "python3 $PWD/node.py -p $port -c True -j $node1:$port"
