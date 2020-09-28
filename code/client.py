@@ -74,24 +74,20 @@ def walk_neighbours(start_nodes):
 def simple_check(nodes):
 	print("Simple put/get check, retreiving from same node ...")
 
-	tries = 1000
+	tries = 10
 	pairs = generate_pairs(tries)
 
 	successes = 0
 	node_index = 0
 	for key, value in pairs.items():
 		try:   
-			#print(nodes[node_index], int(uuid.UUID(key))%16)
+			
 			put_value(nodes[node_index], key, value)
-			#print(value)
 			returned = get_value(nodes[node_index], key)
-			#print(returned)
-
 
 			if returned == value:
 				successes+=1
 		except:
-			#print("DOES THIS EVEN HAPPEN ?????!!!!!!??????!!!!????!!!")
 			pass
 
 		node_index = (node_index+1) % len(nodes)
@@ -104,7 +100,7 @@ def simple_check(nodes):
 def retrieve_from_different_nodes(nodes):
 	print("Retrieving from different nodes ...")
 
-	tries = 1000
+	tries = 10
 	pairs = generate_pairs(tries)
 
 	successes = 0
@@ -116,7 +112,6 @@ def retrieve_from_different_nodes(nodes):
 			returned = get_value(node2, key)
 
 			if returned == value:
-				#print("TRUE", node1, node2)
 				successes+=1
 		except:
 			pass
@@ -162,7 +157,7 @@ def main(args):
 	
 	end = time.time()
 	elapsed_simple = (end-start)
-	print("------------", elapsed_simple)
+	print("Time to do the simple check: ", elapsed_simple)
 
 	print()
 	start = time.time()
@@ -171,7 +166,7 @@ def main(args):
 	
 	end = time.time()
 	elapsed_different = (end-start)
-	print("------------", elapsed_different)
+	print("Time to retrieve from different nodes: ", elapsed_different)
 
 	print()
 	start = time.time()
@@ -180,13 +175,13 @@ def main(args):
 	
 	end = time.time()
 	elapsed_nonexistent = (end-start)
-	print("------------", elapsed_nonexistent)
+	print("time to find nonexistent key: ", elapsed_nonexistent)
 
-	f = open("times.txt", "a+")
+	#f = open("times.txt", "a+")
 
-	f.write("1000," + str(len(nodes)) + "," + str(elapsed_simple) + "," + str(elapsed_different) + "," + str(elapsed_nonexistent) + "\n")
+	#f.write("1000," + str(len(nodes)) + "," + str(elapsed_simple) + "," + str(elapsed_different) + "," + str(elapsed_nonexistent) + "\n")
 	
-	f.close()
+	#f.close()
 
 
 if __name__ == "__main__":

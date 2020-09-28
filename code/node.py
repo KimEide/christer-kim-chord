@@ -43,6 +43,9 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		self.wfile.write(content)
 
 	def find_successor(self, address, path, method, value):
+		"""
+		forwards a request untill the successor of the address is found
+		"""
 		if address in server.finger_table and True in server.finger_table[address]:
 			full_address = server.finger_table[address][0]
 			response, status = self.get_value(full_address, path, method, value)
@@ -78,6 +81,9 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		return value, resp.status
 	
 	def do_POST(self):
+		"""
+		Handler for post request
+		"""
 		#if it starts with successor, then the node who sent the message is the servers predecessor
 		if self.path.startswith("/successor"):
 			p = self.extract_node_from_path(self.path)
@@ -95,7 +101,9 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				server.successor = id_from_name(s)
 
 	def do_PUT(self):
-
+		"""
+		Handler for PUT request
+		"""
 		content_length = int(self.headers.get('content-length', 0))
 
 		key = self.extract_key_from_path(self.path)
@@ -114,7 +122,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 
 			self.send_whole_response(200, "Value stored for " + key)
 		
-		elif server.id < server.predecessor and is_bewteen(server.predecessor, address, server.id, server.M):
+		elif server.id < server.predecessor and is_bewteen(server.predecessor, address, server.id):
 			object_store[key] = value
 
 			self.send_whole_response(200, "Value stored for " + key)
@@ -124,7 +132,9 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		
 	
 	def do_GET(self):
-
+		"""
+		Handler for GET request
+		"""
 		if self.path.startswith("/storage"):
 			key = self.extract_key_from_path(self.path)
 			
@@ -145,7 +155,7 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 				else:
 					self.send_whole_response(404, "No object with key '%s' on this node" % key)
 
-			elif server.id < server.predecessor and is_bewteen(server.predecessor, address, server.id, server.M):
+			elif server.id < server.predecessor and is_bewteen(server.predecessor, address, server.id):
 				if key in object_store:
 					self.send_whole_response(200, object_store[key])
 				else:
@@ -173,7 +183,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		self.successor = None
 
 	def innit_(self, args):
-
+		"""
+		initializes the server
+		"""
 		self.port = args.port
 		
 		if args.cluster == True:
@@ -215,6 +227,9 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				self.predecessor = id_from_name(self.address)
 
 	def find_placement(self, all_neighbors):
+		"""
+		finds the nodes placement in the chord circle based on all nodes in the network
+		"""
 		size = len(all_neighbors)
 		if size <= 1:
 			return all_neighbors[0], all_neighbors[0]
@@ -224,32 +239,15 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 				b = self.id
 				c = id_from_name(all_neighbors[(i+1)%len(all_neighbors)])
 
-				if is_bewteen(a, b, c, self.M):
+				if is_bewteen(a, b, c):
 					return all_neighbors[i], all_neighbors[(i+1)%len(all_neighbors)]
 		
 		else:
 			print("unexpected error, size < 1")
 			quit()
 
-	def neigbhor_interval(self):
-		self.successor = id_from_name(neighbors[0])
-		self.predecessor = id_from_name(neighbors[1])
-
-		if self.successor < self.id:
-			interval = (self.M + self.successor) - self.id
-		else:
-			interval = self.successor - self.id
-
-		return interval
-
-def get_name_from_address(address):
-	if address.startswith("localhost"):
-		return address
-
-	return address.split(":")[0]
-
 def mergeSort(arr): 
-	""" Borrowed from geeksforgeeks.com """
+	""" Borrowed mergesort from geeksforgeeks.com """
 	if len(arr) >1: 
 		mid = len(arr)//2 
 		L = arr[:mid] 
@@ -281,26 +279,38 @@ def mergeSort(arr):
 	return arr
 
 def id_from_name(name):
-	if not name.startswith("localhost"):
+	"""
+	returns the value of the hashed name mod M
+	"""
+	if name.startswith("localhost"):
+		id = hash_name(name) % server.M
+	else:
 		name = name.split(":")[0]
-
-	return hash_name(name) % server.M
+		id = hash_name(name) % server.M
+	
+	return id
 
 def hash_name(name):
+	"""
+	hashes a name with sha1 hashfunction
+	"""
 	m = hashlib.sha1()
 	m.update(name.encode('utf-8'))
 	return int(m.hexdigest(), 16)
 
-def is_bewteen(a, b, c, m):
+def is_bewteen(a, b, c):
+	"""
+	checks if the number b is in the intervall a-c
+	"""
 	buffer = []
 
 	gap = (c-a)
 	if gap < 0:
-		c = 16+c
+		c = server.M+c
 
 	while(a < c):
 		a += 1
-		buffer.append(a % m)
+		buffer.append(a % server.M)
 				
 	if b in buffer:
 		return True
@@ -341,14 +351,20 @@ def neighbours(node):
 	return neighbors
 
 def notify_successor(node, message):
-    conn = http.client.HTTPConnection(node)
-    conn.request("POST", "/successor/"+str(message))
-    conn.close()
+	"""
+	sends a post to a node to notify that it has gotten new predecessor
+	"""
+	conn = http.client.HTTPConnection(node)
+	conn.request("POST", "/successor/"+str(message))
+	conn.close()
 
 def notify_predecessor(node, message):
-    conn = http.client.HTTPConnection(node)
-    conn.request("POST", "/predecessor/"+str(message))
-    conn.close()
+	"""
+	sends a post to a node to notify that it has gotten new successor
+	"""
+	conn = http.client.HTTPConnection(node)
+	conn.request("POST", "/predecessor/"+str(message))
+	conn.close()
 
 def arg_parser():
 	PORT_DEFAULT = 8000
