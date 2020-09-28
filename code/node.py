@@ -245,10 +245,10 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 			for i in range(size):
 				a = id_from_name(all_neighbors[i])
 				b = self.id
-				c = id_from_name(all_neighbors[(i+1) % size])
+				c = id_from_name(all_neighbors[(i + 1) % size])
 
 				if is_bewteen(a, b, c):
-					return all_neighbors[i], all_neighbors[(i+1) % size]
+					return all_neighbors[i], all_neighbors[(i + 1) % size]
 		
 		else:
 			print("unexpected error, size < 1")
