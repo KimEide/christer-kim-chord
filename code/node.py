@@ -58,10 +58,16 @@ class NodeHttpHandler(BaseHTTPRequestHandler):
 		return re.sub(r'/storage/?(\w+)', r'\1', path)
 
 	def extract_node_from_path(self, path):
+		"""
+		helper function to extract the node identity from a path starting with /finger
+		"""
 		return path.split("/")[2]
 
 
 	def get_value(self, node, path, method, content):
+		"""
+		used to forward request, borrowed from client.py in the handout, somewhat modified version of it.
+		"""
 		conn = http.client.HTTPConnection(node)
 		if method == 'GET':
 			conn.request(method, path)
@@ -189,7 +195,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		self.port = args.port
 		
 		if args.cluster == True:
-			self.name = self.server_name.split('.')[0]#+":"+str(self.port)
+			self.name = self.server_name.split('.')[0]
 			self.address = self.name + ":" + str(self.port)
 			self.id = id_from_name(self.name)
 		else:
@@ -233,14 +239,16 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 		size = len(all_neighbors)
 		if size <= 1:
 			return all_neighbors[0], all_neighbors[0]
+		
 		elif size >= 2:
-			for i in range(len(all_neighbors)):
+			
+			for i in range(size)):
 				a = id_from_name(all_neighbors[i])
 				b = self.id
-				c = id_from_name(all_neighbors[(i+1)%len(all_neighbors)])
+				c = id_from_name(all_neighbors[(i+1) % size])
 
 				if is_bewteen(a, b, c):
-					return all_neighbors[i], all_neighbors[(i+1)%len(all_neighbors)]
+					return all_neighbors[i], all_neighbors[(i+1) % size)]
 		
 		else:
 			print("unexpected error, size < 1")
@@ -283,12 +291,12 @@ def id_from_name(name):
 	returns the value of the hashed name mod M
 	"""
 	if name.startswith("localhost"):
-		id = hash_name(name) % server.M
+		ids = hash_name(name) % server.M
 	else:
 		name = name.split(":")[0]
-		id = hash_name(name) % server.M
+		ids = hash_name(name) % server.M
 	
-	return id
+	return ids
 
 def hash_name(name):
 	"""
@@ -306,7 +314,7 @@ def is_bewteen(a, b, c):
 
 	gap = (c-a)
 	if gap < 0:
-		c = server.M+c
+		c = server.M + c
 
 	while(a < c):
 		a += 1
