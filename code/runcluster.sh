@@ -11,12 +11,16 @@ port=5231
 node1=$(head -n +1 "$filename") 
 echo $node1 > "$file_to_write" 
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
+
 node2=$(head -n +1 "$filename")
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
+
 node3=$(head -n +1 "$filename")
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
+
 node4=$(head -n +1 "$filename")
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
+
 node5=$(head -n +1 "$filename")
 tail -n +2 "$filename" > "$filename.tmp" && mv "$filename.tmp" "$filename"
 
