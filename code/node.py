@@ -184,7 +184,7 @@ class ThreadingHttpServer(HTTPServer, socketserver.ThreadingMixIn):
 	def __init__(self, *args, **kwargs):    
 		super(ThreadingHttpServer, self).__init__(*args, **kwargs)
 		self.finger_table = {}
-		self.M = 16 #must be an exponent of two, 2, 4, 8, 16, 32, 64 
+		self.M = 32 #must be an exponent of two, 2, 4, 8, 16, 32, 64 
 		self.predecessor = None
 		self.successor = None
 
