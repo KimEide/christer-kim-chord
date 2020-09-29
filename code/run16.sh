@@ -6,7 +6,7 @@ python3 genhostfile.py $m
 
 filename="hostfile-random.txt"
 file_to_write="constant.txt"
-port=5231
+port=62310
 
 node1=$(head -n +1 "$filename") 
 echo $node1 > "$file_to_write" 
